@@ -2,17 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Function to calculate raw speed
 def calculate_raw_speed(df):
-    # Ensure that both 't' and 's_sur' columns are numeric
     df['t'] = pd.to_numeric(df['t'], errors='coerce')
     df['s_sur'] = pd.to_numeric(df['s_sur'], errors='coerce')
-    
-    # Drop rows with NaN values
     df = df.dropna(subset=['t', 's_sur'])
-
-    # Calculate raw speed as the change in distance over time
     df['vsur'] = df['s_sur'].diff() / df['t'].diff()
     return df
 
@@ -27,7 +24,7 @@ def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
 
 # Streamlit UI
-st.title("SprintPower Data Processing")
+st.title("SprintPower Data Processing with Interactive Selection")
 
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -49,37 +46,49 @@ if uploaded_file is not None:
         # Calculate distance s2 from smoothed speed v2
         df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
         
-        # Display data table
-        st.write(df)
+        # Interactive Plot using Plotly
+        fig = go.Figure()
+
+        # Add raw speed plot
+        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
-        # Plotting the results
-        fig, ax = plt.subplots(3, 1, figsize=(10, 8))
+        # Add smoothed speed plot
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
         
-        # Plot raw speed
-        ax[0].plot(df['t'], df['vsur'], label='Raw Speed (vsur)')
-        ax[0].set_title('Raw Speed')
-        ax[0].set_xlabel('Time (s)')
-        ax[0].set_ylabel('Speed (m/s)')
+        # Add second smoothed speed plot and distance
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+
+        fig.update_layout(
+            title="Select a Region of Interest by Dragging",
+            xaxis_title="Time (s)",
+            yaxis_title="Speed/Distance (m/s or m)",
+            hovermode="closest"
+        )
+
+        # Streamlit Plotly plot
+        selected_points = st.plotly_chart(fig, use_container_width=True)
+
+        # Allow user to select a range of data for cleaning
+        st.subheader("Clean Data Selection")
+        st.write("Drag over the plot above to select a portion of the data. This will be shown below.")
         
-        # Plot first-stage smoothed speed
-        ax[1].plot(df['t'], df['v1'], label='Smoothed Speed (v1)', color='orange')
-        ax[1].set_title('Smoothed Speed (A=9, B=9)')
-        ax[1].set_xlabel('Time (s)')
-        ax[1].set_ylabel('Speed (m/s)')
-        
-        # Plot second-stage smoothed speed and calculated distance
-        ax[2].plot(df['t'], df['v2'], label='Smoothed Speed (v2)', color='green')
-        ax[2].plot(df['t'], df['s2'], label='Calculated Distance (s2)', color='red', linestyle='--')
-        ax[2].set_title('Smoothed Speed (A=3, B=3) and Calculated Distance')
-        ax[2].set_xlabel('Time (s)')
-        ax[2].set_ylabel('Speed/Distance (m/s or m)')
-        
-        # Show legend
-        for a in ax:
-            a.legend()
-        
-        # Display the plot
-        st.pyplot(fig)
+        # Retrieve the selected data (we assume a user selected a region of interest)
+        if selected_points:
+            selection = selected_points["points"]
+            if len(selection) > 0:
+                # Extract selected data points
+                selected_indices = [point["pointIndex"] for point in selection]
+                selected_df = df.iloc[selected_indices]
+                
+                # Display the selected data
+                st.write("Selected Data:")
+                st.dataframe(selected_df)
+                
+                # You can now apply further data cleaning, for example:
+                st.write("Cleaned Data (after dropping NaN values):")
+                cleaned_df = selected_df.dropna()
+                st.dataframe(cleaned_df)
 
     except Exception as e:
         st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
