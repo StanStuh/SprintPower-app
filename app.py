@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.graph_objects as go
 
 # Function to calculate raw speed
@@ -63,32 +61,31 @@ if uploaded_file is not None:
             title="Select a Region of Interest by Dragging",
             xaxis_title="Time (s)",
             yaxis_title="Speed/Distance (m/s or m)",
-            hovermode="closest"
+            hovermode="closest",
+            dragmode="select"  # Enable selection mode
         )
 
         # Streamlit Plotly plot
-        selected_points = st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-        # Allow user to select a range of data for cleaning
-        st.subheader("Clean Data Selection")
-        st.write("Drag over the plot above to select a portion of the data. This will be shown below.")
+        # Information about selection
+        st.subheader("Data Selection")
+        st.write("Drag over the plot above to select a portion of the data.")
+
+        # Allow users to specify a range of time to filter data
+        time_range = st.slider("Select Time Range", min_value=float(df['t'].min()), max_value=float(df['t'].max()), value=(float(df['t'].min()), float(df['t'].max())))
         
-        # Retrieve the selected data (we assume a user selected a region of interest)
-        if selected_points:
-            selection = selected_points["points"]
-            if len(selection) > 0:
-                # Extract selected data points
-                selected_indices = [point["pointIndex"] for point in selection]
-                selected_df = df.iloc[selected_indices]
-                
-                # Display the selected data
-                st.write("Selected Data:")
-                st.dataframe(selected_df)
-                
-                # You can now apply further data cleaning, for example:
-                st.write("Cleaned Data (after dropping NaN values):")
-                cleaned_df = selected_df.dropna()
-                st.dataframe(cleaned_df)
+        # Filter the DataFrame based on the selected range
+        filtered_df = df[(df['t'] >= time_range[0]) & (df['t'] <= time_range[1])]
+        
+        # Display the selected data
+        st.write("Filtered Data:")
+        st.dataframe(filtered_df)
+
+        # Clean the filtered data (e.g., drop NaNs)
+        cleaned_df = filtered_df.dropna()
+        st.write("Cleaned Data (after dropping NaN values):")
+        st.dataframe(cleaned_df)
 
     except Exception as e:
         st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
