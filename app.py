@@ -42,6 +42,17 @@ if uploaded_file is not None:
         # Ensure columns are numeric and clean data
         df = calculate_raw_speed(df)
         
+        # Nariši graf surove poti - čas
+        fig_raw_path = go.Figure()
+        fig_raw_path.add_trace(go.Scatter(x=df['t'], y=df['s_sur'], mode='lines', name='Surova pot', line=dict(color='blue')))
+        fig_raw_path.update_layout(
+            title="Surova pot - Čas",
+            xaxis_title="Čas (s)",
+            yaxis_title="Razdalja (m)",
+            hovermode="closest"
+        )
+        st.plotly_chart(fig_raw_path)
+
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
