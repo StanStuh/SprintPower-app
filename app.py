@@ -37,14 +37,23 @@ uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 # Initialize session state for the DataFrame
 if 'df' not in st.session_state:
     st.session_state.df = None
+    st.session_state.initial_data_loaded = False
 
 if uploaded_file is not None:
     try:
         # Read the CSV file with appropriate separator and decimal settings
-        st.session_state.df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
+        df_raw = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
         
         # Ensure columns are numeric and clean data
-        st.session_state.df = calculate_raw_speed(st.session_state.df)
+        df_raw = calculate_raw_speed(df_raw)
+
+        # If data hasn't been loaded into session state, store it now
+        if not st.session_state.initial_data_loaded:
+            st.session_state.df = df_raw
+            st.session_state.initial_data_loaded = True
+        else:
+            # If data is already loaded, we keep the previous state and use the new data
+            st.session_state.df = pd.concat([st.session_state.df, df_raw])
 
         # Button to remove last 10 data points
         if st.button("Remove Last 10 Data Points"):
@@ -159,17 +168,15 @@ if uploaded_file is not None:
 
             if not distance_data.empty:
                 # Get the first occurrence of distance data
-                time_at_distance = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
-                speed_at_distance = distance_data['v2'].iloc[0]  # Use v2 for speed
-
-                # Append results for the distance
+                time_at_distance = distance_data['t'].iloc[0] - distance_data['t'].min()  # Time from start to this distance
+                speed_at_distance = distance_data['v2'].iloc[0]  # Use the speed at this distance
                 results_list.append({
                     'Distance (m)': d,
                     'Time (s)': time_at_distance,
                     'Speed (m/s)': speed_at_distance
                 })
 
-        # Ensure the 30 m entry is correctly reflected
+        # Ensure the last entry for max distance is reflected
         if results_list and results_list[-1]['Distance (m)'] < max_distance:
             time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
             speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
