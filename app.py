@@ -24,6 +24,9 @@ def calculate_distance_from_speed(v2, delta_t):
 # Streamlit UI
 st.title("SprintPower Data Processing with Interactive Selection")
 
+# Input for calibration value
+calibration_value = st.number_input("Enter Calibration Value (in meters)", value=3.105, step=0.001)
+
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
@@ -34,6 +37,9 @@ if uploaded_file is not None:
         
         # Ensure columns are numeric and clean data
         df = calculate_raw_speed(df)
+        
+        # Apply calibration value to calculate s_reference
+        df['s_reference'] = df['s_sur'] - calibration_value
         
         # Apply first-stage smoothing (A=9, B=9)
         df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
@@ -56,6 +62,9 @@ if uploaded_file is not None:
         # Add second smoothed speed plot and distance
         fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+        
+        # Add plot for s_reference
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
             title="Select a Time Range",
