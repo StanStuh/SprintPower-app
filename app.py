@@ -13,7 +13,6 @@ def calculate_raw_speed(df):
 
 # Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
-    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
@@ -37,7 +36,7 @@ uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 # Initialize session state for the DataFrame
 if 'df' not in st.session_state:
     st.session_state.df = None
-    st.session_state.initial_data_loaded = False
+    st.session_state.initial_data_loaded = False  # Initialize this state variable
 
 if uploaded_file is not None:
     try:
