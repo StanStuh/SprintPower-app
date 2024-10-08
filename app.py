@@ -22,15 +22,6 @@ def moving_average_smoothing(data, A, B):
 def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
 
-# Function to remove outliers using IQR method
-def remove_outliers(df, column):
-    Q1 = df[column].quantile(0.25)
-    Q3 = df[column].quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    return df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
-
 # Streamlit UI
 st.title("SprintPower Data Processing with Range Selection")
 
@@ -48,27 +39,13 @@ if uploaded_file is not None:
         # Read the CSV file with appropriate separator and decimal settings
         df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
         
-        # Remove the last second of data initially
-        df = df[df['t'] < df['t'].max() - 1]
-
         # Ensure columns are numeric and clean data
         df = calculate_raw_speed(df)
         
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
-        # Store the original DataFrame in session state
-        if 'data' not in st.session_state:
-            st.session_state.data = df
-        
-        # Button to shorten data by 0.2 seconds
-        if st.button("Remove last 0.2 seconds of data"):
-            st.session_state.data = st.session_state.data[st.session_state.data['t'] < st.session_state.data['t'].max() - 0.2]
-        
-        # Get the current DataFrame from session state
-        df = st.session_state.data
-        
-        # Calculate raw v1 and v2 on the current dataset
+        # Calculate raw v1 and v2 on the full dataset
         df['vsur'] = df['s_sur'].diff() / df['t'].diff()
         df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
         df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
@@ -78,9 +55,6 @@ if uploaded_file is not None:
 
         # Filter data for s_reference between 0 and the measured distance (30 meters)
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
-
-        # Remove outliers from the filtered DataFrame based on smoothed speed v2
-        df_filtered = remove_outliers(df_filtered, 'v2')
 
         # Interactive Plot using Plotly for all data
         fig = go.Figure()
@@ -174,4 +148,23 @@ if uploaded_file is not None:
 
         # Ensure the 30 m entry is correctly reflected
         if results_list and results_list[-1]['Distance (m)'] < max_distance:
-            time_at_distance = cleaned_df['t'].iloc[-1]
+            time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
+            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
+            results_list.append({
+                'Distance (m)': max_distance,
+                'Time (s)': time_at_distance,
+                'Speed (m/s)': speed_at_distance
+            })
+
+        # Create a new DataFrame from the results
+        results_df = pd.DataFrame(results_list)
+
+        # Remove duplicate rows based on distance, keeping the first occurrence
+        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
+
+        # Display the new DataFrame in the Streamlit app
+        st.write("Times and Speeds at Every 5 Meters:")
+        st.dataframe(results_df)
+
+    except Exception as e:
+        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
