@@ -13,7 +13,6 @@ def calculate_raw_speed(df):
 
 # Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
-    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
@@ -23,7 +22,7 @@ def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
 
 # Streamlit UI
-st.title("SprintPower Data Processing with Range Selection")
+st.title("SprintPower Data Processing")
 
 # Input for calibration value
 calibration_value = st.number_input("Enter Calibration Value (in meters)", value=3.105, step=0.001)
@@ -53,7 +52,7 @@ if uploaded_file is not None:
         # Calculate distance s2 from smoothed speed v2
         df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
 
-        # Filter data for s_reference between 0 and the measured distance (30 meters)
+        # Filter data for s_reference between 0 and the measured distance
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
 
         # Interactive Plot using Plotly for all data
@@ -82,8 +81,8 @@ if uploaded_file is not None:
         # Plot the graph
         st.plotly_chart(fig)
 
-        # Display filtered DataFrame for the range s_reference=0 to 30 meters
-        st.write("Filtered Data (s_reference between 0 and 30 meters):")
+        # Display filtered DataFrame for the range s_reference=0 to measured distance
+        st.write("Filtered Data (s_reference between 0 and measured distance):")
         st.dataframe(df_filtered)
 
         # Clean the filtered data (e.g., drop NaNs)
@@ -110,9 +109,9 @@ if uploaded_file is not None:
         fig_cleaned_distance.add_trace(go.Scatter(
             x=cleaned_df['t_adjusted'],
             y=cleaned_df['s2'],
-            mode='lines',  # Continuous line for s2
+            mode='lines',
             name='Calculated Distance (s2)',
-            line=dict(color='red')  # Changed to straight line
+            line=dict(color='red')
         ))
         fig_cleaned_distance.update_layout(
             title="Calculated Distance (s2)",
@@ -124,32 +123,29 @@ if uploaded_file is not None:
 
         # Create a new DataFrame for times and speeds at every 5 meters
         interval_distance = 5
-        max_distance = measured_distance  # Use the measured distance as max
+        max_distance = measured_distance
 
         # Create a new DataFrame for results
         results_list = []
 
         # Iterate over the range from 0 to max_distance in steps of interval_distance
         for d in range(0, int(max_distance) + 1, interval_distance):
-            # Filter the DataFrame to get the first occurrence of each distance
             distance_data = df_filtered[df_filtered['s_reference'] >= d]
 
             if not distance_data.empty:
-                # Get the first occurrence of distance data
-                time_at_distance = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
-                speed_at_distance = distance_data['v2'].iloc[0]  # Use v2 for speed
+                time_at_distance = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]
+                speed_at_distance = distance_data['v2'].iloc[0]
 
-                # Append results for the distance
                 results_list.append({
                     'Distance (m)': d,
                     'Time (s)': time_at_distance,
                     'Speed (m/s)': speed_at_distance
                 })
 
-        # Ensure the 30 m entry is correctly reflected
+        # Ensure the last entry for the maximum distance is correctly reflected
         if results_list and results_list[-1]['Distance (m)'] < max_distance:
-            time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
-            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
+            time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]
+            speed_at_distance = cleaned_df['v2'].iloc[-1]
             results_list.append({
                 'Distance (m)': max_distance,
                 'Time (s)': time_at_distance,
