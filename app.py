@@ -89,20 +89,23 @@ if uploaded_file is not None:
         st.write("Cleaned Data (after dropping NaN values):")
         st.dataframe(cleaned_df)
 
+        # Adjust time so it starts from 0 for cleaned data
+        cleaned_df['t_adjusted'] = cleaned_df['t'] - cleaned_df['t'].min()
+
         # Create new charts for v1 and v2 from the cleaned data
         st.subheader("Cleaned Data: Smoothed Speed (v1, v2) and Calculated Distance (s2)")
         
-        # New Plot for Smoothed Speeds v1 and v2
+        # New Plot for Smoothed Speeds v1 and v2 with adjusted time
         fig_cleaned_speed = go.Figure()
-        fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         fig_cleaned_speed.update_layout(title="Smoothed Speeds (v1 and v2)", xaxis_title="Time (s)", yaxis_title="Speed (m/s)")
         
         st.plotly_chart(fig_cleaned_speed, use_container_width=True)
 
-        # New Plot for Calculated Distance (s2)
+        # New Plot for Calculated Distance (s2) with adjusted time
         fig_cleaned_distance = go.Figure()
-        fig_cleaned_distance.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+        fig_cleaned_distance.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
         fig_cleaned_distance.update_layout(title="Calculated Distance (s2)", xaxis_title="Time (s)", yaxis_title="Distance (m)")
         
         st.plotly_chart(fig_cleaned_distance, use_container_width=True)
