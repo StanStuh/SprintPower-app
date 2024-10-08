@@ -27,13 +27,17 @@ def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
 
 # Streamlit UI
-st.title("SprintPower Data Processing with Range Selection")
+st.title("SprintPower Data Processing with Speed Filtering")
 
 # Input for calibration value
 calibration_value = st.number_input("Enter Calibration Value (in meters)", value=3.105, step=0.001)
 
 # Input for measured distance value
 measured_distance = st.number_input("Enter Measured Distance (in meters)", value=30.0, step=0.1)
+
+# Input for acceptable speed range
+min_speed = st.number_input("Enter Minimum Acceptable Speed (m/s)", value=0.0, step=0.1)
+max_speed = st.number_input("Enter Maximum Acceptable Speed (m/s)", value=10.0, step=0.1)
 
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -49,41 +53,35 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
-        # Add a slider to select the range of data to cut off
-        time_range = st.slider("Select time range to cut off (in seconds)", 
-                                min_value=float(df['t'].min()), 
-                                max_value=float(df['t'].max()), 
-                                value=(float(df['t'].min()), float(df['t'].max())))
-
-        # Filter the DataFrame to exclude the selected time range
-        df_filtered = df[(df['t'] < time_range[0]) | (df['t'] > time_range[1])]
+        # Filter out speeds that are outside the acceptable range
+        df = df[(df['vsur'] >= min_speed) & (df['vsur'] <= max_speed)]
 
         # Calculate raw v1 and v2 on the filtered dataset
-        df_filtered['vsur'] = df_filtered['s_sur'].diff() / df_filtered['t'].diff()
-        df_filtered['v1'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=9, B=9)
-        df_filtered['v2'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=3, B=3)
+        df['vsur'] = df['s_sur'].diff() / df['t'].diff()
+        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
+        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
-        df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
+        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
 
         # Filter data for s_reference between 0 and the measured distance
-        df_filtered = df_filtered[(df_filtered['s_reference'] >= 0) & (df_filtered['s_reference'] <= measured_distance)]
+        df = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
 
-        # Interactive Plot using Plotly for all filtered data
+        # Interactive Plot using Plotly for filtered data
         fig = go.Figure()
 
         # Add raw speed plot for filtered data
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['vsur'], mode='lines', name='Raw Speed (vsur)'))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
         # Add smoothed speed plots for filtered data
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         
         # Add plot for calculated distance for filtered data
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
         
         # Add plot for s_reference for filtered data
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
             title="Speed and Distance (Filtered Data)",
@@ -97,10 +95,10 @@ if uploaded_file is not None:
 
         # Display filtered DataFrame for the range s_reference between 0 and measured distance
         st.write("Filtered Data (s_reference between 0 and measured distance):")
-        st.dataframe(df_filtered)
+        st.dataframe(df)
 
         # Clean the filtered data (e.g., drop NaNs)
-        cleaned_df = df_filtered.dropna()
+        cleaned_df = df.dropna()
         st.write("Cleaned Data (after dropping NaN values):")
         st.dataframe(cleaned_df)
 
@@ -170,6 +168,4 @@ if uploaded_file is not None:
             })
 
         # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results_list)
-
-        # Display
+        results
