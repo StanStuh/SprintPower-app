@@ -50,11 +50,11 @@ if uploaded_file is not None:
         df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
         df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
         
+        # Calculate distance s2 from smoothed speed v2
+        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
+
         # Filter data for s_reference between 0 and the measured distance (30 meters)
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
-        
-        # Calculate distance s2 from smoothed speed v2
-        df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
 
         # Interactive Plot using Plotly for all data
         fig = go.Figure()
@@ -137,10 +137,12 @@ if uploaded_file is not None:
                 })
 
         # Ensure the 30 m entry is correctly reflected
-        if results_list[-1]['Distance (m)'] < max_distance:
+        if results_list and results_list[-1]['Distance (m)'] < max_distance:
+            time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
+            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
             results_list.append({
                 'Distance (m)': max_distance,
-                'Time (s)': time_at_distance + (cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]),
+                'Time (s)': time_at_distance,
                 'Speed (m/s)': speed_at_distance
             })
 
