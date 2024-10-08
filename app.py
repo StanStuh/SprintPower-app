@@ -176,4 +176,12 @@ if uploaded_file is not None:
             # Create a new DataFrame from the results
             results_df = pd.DataFrame(results_list)
 
-            # Remove duplicate rows based on distance, keeping the first occurrence
+                        # Remove duplicate rows based on distance, keeping the first occurrence
+            results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
+
+            # Display the results DataFrame
+            st.write("Times and Speeds at Every 5 Meters:")
+            st.dataframe(results_df)
+
+    except Exception as e:
+        st.error(f"An error occurred while processing the file: {e}")
