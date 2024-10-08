@@ -119,40 +119,29 @@ if uploaded_file is not None:
         # Create a new DataFrame for results
         results_list = []
 
-        # Initialize the last known values for time and speed
-        last_known_time = 0
-        last_known_speed = np.nan
-
         # Iterate over the range from 0 to max_distance in steps of interval_distance
         for d in range(0, int(max_distance) + 1, interval_distance):
             # Filter the DataFrame to get the first occurrence of each distance
             distance_data = df_filtered[df_filtered['s_reference'] >= d]
 
-            if d == 0:
-                # Append the first distance with time set to zero
-                results_list.append({
-                    'Distance (m)': d,
-                    'Time (s)': last_known_time,
-                    'Speed (m/s)': cleaned_df['v2'].iloc[0] if not cleaned_df.empty else np.nan
-                })
-            elif not distance_data.empty:
-                # Update last known values
-                last_known_time = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
-                last_known_speed = distance_data['v2'].iloc[0]  # Use v2 for speed
+            if not distance_data.empty:
+                # Get the first occurrence of distance data
+                time_at_distance = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
+                speed_at_distance = distance_data['v2'].iloc[0]  # Use v2 for speed
 
                 # Append results for the distance
                 results_list.append({
                     'Distance (m)': d,
-                    'Time (s)': last_known_time,
-                    'Speed (m/s)': last_known_speed
+                    'Time (s)': time_at_distance,
+                    'Speed (m/s)': speed_at_distance
                 })
 
-        # Ensure 30 m is included, if it wasn't already in the results
-        if last_known_time < max_distance and not (results_list and results_list[-1]['Distance (m)'] == max_distance):
+        # Ensure the 30 m entry is correctly reflected
+        if results_list[-1]['Distance (m)'] < max_distance:
             results_list.append({
                 'Distance (m)': max_distance,
-                'Time (s)': last_known_time + (cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]),
-                'Speed (m/s)': last_known_speed
+                'Time (s)': time_at_distance + (cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]),
+                'Speed (m/s)': speed_at_distance
             })
 
         # Create a new DataFrame from the results
@@ -167,3 +156,4 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+
