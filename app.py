@@ -44,18 +44,16 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
-        # Filter data for s_reference between 0 and the measured distance (30 meters)
-        df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
-        
-        # Apply first-stage smoothing (A=9, B=9)
-        df_filtered['v1'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=9, B=9)
-        
-        # Apply second-stage smoothing (A=3, B=3)
-        df_filtered['v2'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=3, B=3)
+        # Calculate v1 and v2 on the full dataset (all data)
+        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
+        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
-        df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
-        
+        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
+
+        # Now filter data for s_reference between 0 and the measured distance (30 meters)
+        df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
+
         # Interactive Plot using Plotly
         fig = go.Figure()
 
