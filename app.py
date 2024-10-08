@@ -44,12 +44,13 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
+        # Calculate raw v1 and v2 on the full dataset
+        df['vsur'] = df['s_sur'].diff() / df['t'].diff()
+        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
+        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
+        
         # Filter data for s_reference between 0 and the measured distance (30 meters)
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
-
-        # Calculate v1 and v2 on the filtered dataset
-        df_filtered['v1'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=9, B=9)
-        df_filtered['v2'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
         df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
@@ -60,11 +61,11 @@ if uploaded_file is not None:
         # Add raw speed plot
         fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
-        # Add smoothed speed plot
+        # Add smoothed speed plots
         fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        
-        # Add second smoothed speed plot and distance
         fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        
+        # Add plot for calculated distance
         fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
         
         # Add plot for s_reference
