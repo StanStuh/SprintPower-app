@@ -13,6 +13,7 @@ def calculate_raw_speed(df):
 
 # Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
+    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
@@ -33,75 +34,43 @@ measured_distance = st.number_input("Enter Measured Distance (in meters)", value
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
-# Initialize session state for the DataFrame
-if 'df' not in st.session_state:
-    st.session_state.df = None
-    st.session_state.initial_data_loaded = False  # Initialize this state variable
-
 if uploaded_file is not None:
     try:
         # Read the CSV file with appropriate separator and decimal settings
-        df_raw = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
+        df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
         
         # Ensure columns are numeric and clean data
-        df_raw = calculate_raw_speed(df_raw)
-
-        # If data hasn't been loaded into session state, store it now
-        if not st.session_state.initial_data_loaded:
-            st.session_state.df = df_raw
-            st.session_state.initial_data_loaded = True
-        else:
-            # If data is already loaded, we keep the previous state and use the new data
-            st.session_state.df = pd.concat([st.session_state.df, df_raw])
-
-        # Button to remove last 10 data points
-        if st.button("Remove Last 10 Data Points"):
-            if len(st.session_state.df) >= 10:
-                st.session_state.df = st.session_state.df[:-10]  # Remove the last 10 rows
-                st.success("Removed the last 10 data points.")
-            else:
-                st.warning("Not enough data points to remove.")
-
-        # Plot raw path - time graph
-        fig_raw_path = go.Figure()
-        fig_raw_path.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['s_sur'], mode='lines', name='Surova pot', line=dict(color='blue')))
-        fig_raw_path.update_layout(
-            title="Surova pot - Čas",
-            xaxis_title="Čas (s)",
-            yaxis_title="Razdalja (m)",
-            hovermode="closest"
-        )
-        st.plotly_chart(fig_raw_path)
-
+        df = calculate_raw_speed(df)
+        
         # Apply calibration value to calculate s_reference
-        st.session_state.df['s_reference'] = st.session_state.df['s_sur'] - calibration_value
+        df['s_reference'] = df['s_sur'] - calibration_value
         
         # Calculate raw v1 and v2 on the full dataset
-        st.session_state.df['vsur'] = st.session_state.df['s_sur'].diff() / st.session_state.df['t'].diff()
-        st.session_state.df['v1'] = moving_average_smoothing(st.session_state.df['vsur'].fillna(0), A=9, B=9)
-        st.session_state.df['v2'] = moving_average_smoothing(st.session_state.df['vsur'].fillna(0), A=3, B=3)
+        df['vsur'] = df['s_sur'].diff() / df['t'].diff()
+        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
+        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
-        st.session_state.df['s2'] = calculate_distance_from_speed(st.session_state.df['v2'], st.session_state.df['t'].diff().fillna(0))
+        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
 
         # Filter data for s_reference between 0 and the measured distance (30 meters)
-        df_filtered = st.session_state.df[(st.session_state.df['s_reference'] >= 0) & (st.session_state.df['s_reference'] <= measured_distance)]
+        df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
 
         # Interactive Plot using Plotly for all data
         fig = go.Figure()
 
         # Add raw speed plot for all data
-        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['vsur'], mode='lines', name='Raw Speed (vsur)'))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
         # Add smoothed speed plots for all data
-        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         
         # Add plot for calculated distance for all data
-        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
         
         # Add plot for s_reference for all data
-        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
             title="Speed and Distance (All Data)",
@@ -167,15 +136,17 @@ if uploaded_file is not None:
 
             if not distance_data.empty:
                 # Get the first occurrence of distance data
-                time_at_distance = distance_data['t'].iloc[0] - distance_data['t'].min()  # Time from start to this distance
-                speed_at_distance = distance_data['v2'].iloc[0]  # Use the speed at this distance
+                time_at_distance = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
+                speed_at_distance = distance_data['v2'].iloc[0]  # Use v2 for speed
+
+                # Append results for the distance
                 results_list.append({
                     'Distance (m)': d,
                     'Time (s)': time_at_distance,
                     'Speed (m/s)': speed_at_distance
                 })
 
-        # Ensure the last entry for max distance is reflected
+        # Ensure the 30 m entry is correctly reflected
         if results_list and results_list[-1]['Distance (m)'] < max_distance:
             time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
             speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
