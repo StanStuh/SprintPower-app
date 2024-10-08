@@ -22,7 +22,7 @@ def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
 
 # Streamlit UI
-st.title("SprintPower Data Processing with Interactive Selection")
+st.title("SprintPower Data Processing with Range Selection")
 
 # Input for calibration value
 calibration_value = st.number_input("Enter Calibration Value (in meters)", value=3.105, step=0.001)
@@ -44,33 +44,36 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
+        # Filter data for s_reference between 0 and the measured distance (30 meters)
+        df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
+        
         # Apply first-stage smoothing (A=9, B=9)
-        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
+        df_filtered['v1'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=9, B=9)
         
         # Apply second-stage smoothing (A=3, B=3)
-        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
+        df_filtered['v2'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
-        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
+        df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
         
         # Interactive Plot using Plotly
         fig = go.Figure()
 
         # Add raw speed plot
-        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
         # Add smoothed speed plot
-        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
         
         # Add second smoothed speed plot and distance
-        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
         
         # Add plot for s_reference
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
-            title="Select a Time Range",
+            title="Speed and Distance (s_reference = 0 to 30 meters)",
             xaxis_title="Time (s)",
             yaxis_title="Speed/Distance (m/s or m)",
             hovermode="closest"
@@ -79,20 +82,12 @@ if uploaded_file is not None:
         # Plot the graph
         st.plotly_chart(fig)
 
-        # Add time range slider
-        min_time = df['t'].min()
-        max_time = df['t'].max()
-
-        selected_time_range = st.slider("Select Time Range", min_value=min_time, max_value=max_time, value=(min_time, max_time))
-
-        # Filter data based on selected time range
-        filtered_df = df[(df['t'] >= selected_time_range[0]) & (df['t'] <= selected_time_range[1])]
-
-        st.write("Filtered Data (based on time range):")
-        st.dataframe(filtered_df)
+        # Display filtered DataFrame for the range s_reference=0 to 30 meters
+        st.write("Filtered Data (s_reference between 0 and 30 meters):")
+        st.dataframe(df_filtered)
 
         # Clean the filtered data (e.g., drop NaNs)
-        cleaned_df = filtered_df.dropna()
+        cleaned_df = df_filtered.dropna()
         st.write("Cleaned Data (after dropping NaN values):")
         st.dataframe(cleaned_df)
 
