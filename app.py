@@ -13,6 +13,7 @@ def calculate_raw_speed(df):
 
 # Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
+    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
@@ -21,13 +22,8 @@ def moving_average_smoothing(data, A, B):
 def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
 
-# Function to filter out alien data
-def filter_alien_data(df, threshold=1.0):
-    diff_speed = df['vsur'].diff().abs()
-    return df[diff_speed < threshold]
-
 # Streamlit UI
-st.title("SprintPower Data Processing with Alien Data Filter")
+st.title("SprintPower Data Processing with Range Selection")
 
 # Input for calibration value
 calibration_value = st.number_input("Enter Calibration Value (in meters)", value=3.105, step=0.001)
@@ -42,21 +38,18 @@ if uploaded_file is not None:
     try:
         # Read the CSV file with appropriate separator and decimal settings
         df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
-
+        
         # Ensure columns are numeric and clean data
         df = calculate_raw_speed(df)
-
+        
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
-
-        # Apply alien data filtering
-        df = filter_alien_data(df)
-
+        
         # Calculate raw v1 and v2 on the full dataset
         df['vsur'] = df['s_sur'].diff() / df['t'].diff()
         df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
         df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
-
+        
         # Calculate distance s2 from smoothed speed v2
         df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
 
@@ -68,14 +61,14 @@ if uploaded_file is not None:
 
         # Add raw speed plot for all data
         fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
-
+        
         # Add smoothed speed plots for all data
         fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
         fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
-
+        
         # Add plot for calculated distance for all data
         fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
-
+        
         # Add plot for s_reference for all data
         fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
@@ -103,13 +96,13 @@ if uploaded_file is not None:
 
         # Create new charts for v1 and v2 from the cleaned data
         st.subheader("Cleaned Data: Smoothed Speed (v1, v2) and Calculated Distance (s2)")
-
+        
         # New Plot for Smoothed Speeds v1 and v2 with adjusted time
         fig_cleaned_speed = go.Figure()
         fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
         fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         fig_cleaned_speed.update_layout(title="Smoothed Speeds (v1 and v2)", xaxis_title="Time (s)", yaxis_title="Speed (m/s)")
-
+        
         st.plotly_chart(fig_cleaned_speed, use_container_width=True)
 
         # New Plot for Calculated Distance (s2) with adjusted time
@@ -117,16 +110,16 @@ if uploaded_file is not None:
         fig_cleaned_distance.add_trace(go.Scatter(
             x=cleaned_df['t_adjusted'],
             y=cleaned_df['s2'],
-            mode='lines',
+            mode='lines',  # Continuous line for s2
             name='Calculated Distance (s2)',
-            line=dict(color='red')
+            line=dict(color='red')  # Changed to straight line
         ))
         fig_cleaned_distance.update_layout(
             title="Calculated Distance (s2)",
             xaxis_title="Time (s)",
             yaxis_title="Distance (m)"
         )
-
+        
         st.plotly_chart(fig_cleaned_distance, use_container_width=True)
 
         # Create a new DataFrame for times and speeds at every 5 meters
@@ -164,14 +157,14 @@ if uploaded_file is not None:
             })
 
         # Create a new DataFrame from the results
-        if results_list:  # Only create DataFrame if results_list is not empty
-            results_df = pd.DataFrame(results_list)
+        results_df = pd.DataFrame(results_list)
 
-            # Display the results DataFrame
-            st.subheader("Results: Time and Speed at Every 5 Meters")
-            st.dataframe(results_df)
-        else:
-            st.write("No valid results to display.")
+        # Remove duplicate rows based on distance, keeping the first occurrence
+        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
+
+        # Display the new DataFrame in the Streamlit app
+        st.write("Times and Speeds at Every 5 Meters:")
+        st.dataframe(results_df)
 
     except Exception as e:
-        st.error(f"Error processing the file: {e}")
+        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
