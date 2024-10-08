@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from streamlit_plotly_events import plotly_events  # Importing plotly_events to capture interaction
 
 # Function to calculate raw speed
 def calculate_raw_speed(df):
@@ -59,52 +58,49 @@ if uploaded_file is not None:
         fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
 
         fig.update_layout(
-            title="Select a Region of Interest by Dragging",
+            title="Select a Time Range",
             xaxis_title="Time (s)",
             yaxis_title="Speed/Distance (m/s or m)",
-            hovermode="closest",
-            dragmode="select"  # Enable selection mode
+            hovermode="closest"
         )
 
-        # Streamlit Plotly plot with event capturing
-        selected_points = plotly_events(fig, select_event=True)
+        # Plot the graph
+        st.plotly_chart(fig)
 
-        # If points are selected, filter the data based on the selected region
-        if selected_points:
-            # Extract selected data points
-            selected_indices = [point['pointIndex'] for point in selected_points]
-            
-            # Filter the DataFrame based on selected points
-            filtered_df = df.iloc[selected_indices]
-            
-            st.write("Filtered Data (based on selection):")
-            st.dataframe(filtered_df)
+        # Add time range slider
+        min_time = df['t'].min()
+        max_time = df['t'].max()
 
-            # Clean the filtered data (e.g., drop NaNs)
-            cleaned_df = filtered_df.dropna()
-            st.write("Cleaned Data (after dropping NaN values):")
-            st.dataframe(cleaned_df)
+        selected_time_range = st.slider("Select Time Range", min_value=min_time, max_value=max_time, value=(min_time, max_time))
 
-            # Create new charts for v1 and v2 from the cleaned data
-            st.subheader("Cleaned Data: Smoothed Speed (v1, v2) and Calculated Distance (s2)")
-            
-            # New Plot for Smoothed Speeds v1 and v2
-            fig_cleaned_speed = go.Figure()
-            fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-            fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
-            fig_cleaned_speed.update_layout(title="Smoothed Speeds (v1 and v2)", xaxis_title="Time (s)", yaxis_title="Speed (m/s)")
-            
-            st.plotly_chart(fig_cleaned_speed, use_container_width=True)
+        # Filter data based on selected time range
+        filtered_df = df[(df['t'] >= selected_time_range[0]) & (df['t'] <= selected_time_range[1])]
 
-            # New Plot for Calculated Distance (s2)
-            fig_cleaned_distance = go.Figure()
-            fig_cleaned_distance.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
-            fig_cleaned_distance.update_layout(title="Calculated Distance (s2)", xaxis_title="Time (s)", yaxis_title="Distance (m)")
-            
-            st.plotly_chart(fig_cleaned_distance, use_container_width=True)
+        st.write("Filtered Data (based on time range):")
+        st.dataframe(filtered_df)
 
-        else:
-            st.write("No data points selected. Please drag over the plot to select a region.")
+        # Clean the filtered data (e.g., drop NaNs)
+        cleaned_df = filtered_df.dropna()
+        st.write("Cleaned Data (after dropping NaN values):")
+        st.dataframe(cleaned_df)
+
+        # Create new charts for v1 and v2 from the cleaned data
+        st.subheader("Cleaned Data: Smoothed Speed (v1, v2) and Calculated Distance (s2)")
+        
+        # New Plot for Smoothed Speeds v1 and v2
+        fig_cleaned_speed = go.Figure()
+        fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig_cleaned_speed.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig_cleaned_speed.update_layout(title="Smoothed Speeds (v1 and v2)", xaxis_title="Time (s)", yaxis_title="Speed (m/s)")
+        
+        st.plotly_chart(fig_cleaned_speed, use_container_width=True)
+
+        # New Plot for Calculated Distance (s2)
+        fig_cleaned_distance = go.Figure()
+        fig_cleaned_distance.add_trace(go.Scatter(x=cleaned_df['t'], y=cleaned_df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+        fig_cleaned_distance.update_layout(title="Calculated Distance (s2)", xaxis_title="Time (s)", yaxis_title="Distance (m)")
+        
+        st.plotly_chart(fig_cleaned_distance, use_container_width=True)
 
     except Exception as e:
         st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
