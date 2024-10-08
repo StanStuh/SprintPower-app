@@ -34,28 +34,29 @@ measured_distance = st.number_input("Enter Measured Distance (in meters)", value
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
-# Initialize DataFrame
-df = None
+# Initialize session state for the DataFrame
+if 'df' not in st.session_state:
+    st.session_state.df = None
 
 if uploaded_file is not None:
     try:
         # Read the CSV file with appropriate separator and decimal settings
-        df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
+        st.session_state.df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
         
         # Ensure columns are numeric and clean data
-        df = calculate_raw_speed(df)
+        st.session_state.df = calculate_raw_speed(st.session_state.df)
 
         # Button to remove last 10 data points
         if st.button("Remove Last 10 Data Points"):
-            if len(df) >= 10:
-                df = df[:-10]  # Remove the last 10 rows
+            if len(st.session_state.df) >= 10:
+                st.session_state.df = st.session_state.df[:-10]  # Remove the last 10 rows
                 st.success("Removed the last 10 data points.")
             else:
                 st.warning("Not enough data points to remove.")
 
-        # Nariši graf surove poti - čas
+        # Plot raw path - time graph
         fig_raw_path = go.Figure()
-        fig_raw_path.add_trace(go.Scatter(x=df['t'], y=df['s_sur'], mode='lines', name='Surova pot', line=dict(color='blue')))
+        fig_raw_path.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['s_sur'], mode='lines', name='Surova pot', line=dict(color='blue')))
         fig_raw_path.update_layout(
             title="Surova pot - Čas",
             xaxis_title="Čas (s)",
@@ -65,34 +66,34 @@ if uploaded_file is not None:
         st.plotly_chart(fig_raw_path)
 
         # Apply calibration value to calculate s_reference
-        df['s_reference'] = df['s_sur'] - calibration_value
+        st.session_state.df['s_reference'] = st.session_state.df['s_sur'] - calibration_value
         
         # Calculate raw v1 and v2 on the full dataset
-        df['vsur'] = df['s_sur'].diff() / df['t'].diff()
-        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
-        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
+        st.session_state.df['vsur'] = st.session_state.df['s_sur'].diff() / st.session_state.df['t'].diff()
+        st.session_state.df['v1'] = moving_average_smoothing(st.session_state.df['vsur'].fillna(0), A=9, B=9)
+        st.session_state.df['v2'] = moving_average_smoothing(st.session_state.df['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
-        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
+        st.session_state.df['s2'] = calculate_distance_from_speed(st.session_state.df['v2'], st.session_state.df['t'].diff().fillna(0))
 
         # Filter data for s_reference between 0 and the measured distance (30 meters)
-        df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
+        df_filtered = st.session_state.df[(st.session_state.df['s_reference'] >= 0) & (st.session_state.df['s_reference'] <= measured_distance)]
 
         # Interactive Plot using Plotly for all data
         fig = go.Figure()
 
         # Add raw speed plot for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
+        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
         # Add smoothed speed plots for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         
         # Add plot for calculated distance for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
+        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
         
         # Add plot for s_reference for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
+        fig.add_trace(go.Scatter(x=st.session_state.df['t'], y=st.session_state.df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
             title="Speed and Distance (All Data)",
