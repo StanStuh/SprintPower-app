@@ -56,24 +56,24 @@ if uploaded_file is not None:
         # Calculate distance s2 from smoothed speed v2
         df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
 
-        # Interactive Plot using Plotly
+        # Interactive Plot using Plotly for all data
         fig = go.Figure()
 
-        # Add raw speed plot
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['vsur'], mode='lines', name='Raw Speed (vsur)'))
+        # Add raw speed plot for all data
+        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
-        # Add smoothed speed plots
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        # Add smoothed speed plots for all data
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         
-        # Add plot for calculated distance
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+        # Add plot for calculated distance for all data
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
         
-        # Add plot for s_reference
-        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
+        # Add plot for s_reference for all data
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
-            title="Speed and Distance (s_reference = 0 to 30 meters)",
+            title="Speed and Distance (All Data)",
             xaxis_title="Time (s)",
             yaxis_title="Speed/Distance (m/s or m)",
             hovermode="closest"
@@ -156,4 +156,3 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
-
