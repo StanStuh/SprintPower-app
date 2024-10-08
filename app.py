@@ -173,4 +173,4 @@ if uploaded_file is not None:
         # Create a new DataFrame from the results
         results_df = pd.DataFrame(results_list)
 
-        # Remove duplicate rows based on distance
+        # Remove duplicate rows based on distance, keeping the first
