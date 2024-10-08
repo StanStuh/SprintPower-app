@@ -114,7 +114,7 @@ if uploaded_file is not None:
 
         # Create a new DataFrame for times and speeds at every 5 meters
         interval_distance = 5
-        max_distance = df_filtered['s_reference'].max()
+        max_distance = measured_distance  # Use the measured distance as max
 
         # Create a new DataFrame for results
         results_list = []
@@ -134,12 +134,17 @@ if uploaded_file is not None:
                 })
             else:
                 # Filter the DataFrame to get the first occurrence of each distance
-                distance_data = df_filtered[df_filtered['s_reference'] >= d].head(1)  # Get the first occurrence
+                distance_data = df_filtered[df_filtered['s_reference'] >= d]
                 
                 if not distance_data.empty:
                     # Update last known values
                     last_known_time = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
                     last_known_speed = distance_data['v2'].iloc[0]  # Use v2 for speed
+
+                # Ensure the last distance (30m) is captured
+                if d == max_distance and last_known_time == 0 and not distance_data.empty:
+                    last_known_time = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]
+
                 # Append results for the distance
                 results_list.append({
                     'Distance (m)': d,
