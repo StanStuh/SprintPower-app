@@ -39,6 +39,9 @@ if uploaded_file is not None:
         # Read the CSV file with appropriate separator and decimal settings
         df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
         
+        # Remove the last second of data
+        df = df[df['t'] < df['t'].max() - 1]
+
         # Ensure columns are numeric and clean data
         df = calculate_raw_speed(df)
         
