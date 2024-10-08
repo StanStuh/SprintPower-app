@@ -159,7 +159,18 @@ if uploaded_file is not None:
                     'Speed (m/s)': speed_at_distance
                 })
 
-        # Ensure the 30 m entry is correctly reflected
+        # Ensure the max distance entry is correctly reflected
         if results_list and results_list[-1]['Distance (m)'] < max_distance:
             time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
-            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for
+            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
+            results_list.append({
+                'Distance (m)': max_distance,
+                'Time (s)': time_at_distance,
+                'Speed (m/s)': speed_at_distance
+            })
+
+        # Create a new DataFrame from the results
+        results_df = pd.DataFrame(results_list)
+
+        # Remove duplicate rows based on distance, keeping the first occurrence
+        results
