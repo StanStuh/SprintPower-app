@@ -150,6 +150,14 @@ if uploaded_file is not None:
                         'Speed (m/s)': np.nan
                     })
 
+        # Ensure that 30 meters is included even if no data was found previously
+        if max_distance >= 30 and not any(res['Distance (m)'] == 30 for res in results_list):
+            results_list.append({
+                'Distance (m)': 30,
+                'Time (s)': np.nan,
+                'Speed (m/s)': np.nan
+            })
+
         # Create a new DataFrame from the results
         results_df = pd.DataFrame(results_list)
 
