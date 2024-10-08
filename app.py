@@ -174,4 +174,12 @@ if uploaded_file is not None:
         results_df = pd.DataFrame(results_list)
 
         # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.
+        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
+
+        # Display the new DataFrame in the Streamlit app
+        st.write("Times and Speeds at Every 5 Meters:")
+        st.dataframe(results_df)
+
+    except Exception as e:
+        st.error(f"Pri obdelavi datoteke je
+
