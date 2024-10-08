@@ -116,30 +116,31 @@ if uploaded_file is not None:
         interval_distance = 5
         max_distance = df_filtered['s_reference'].max()
 
-        # Create lists to store times and speeds
-        times = []
-        speeds = []
+        # Create a new DataFrame for results
+        results_list = []
 
         # Iterate over the range from 0 to max_distance in steps of interval_distance
         for d in range(0, int(max_distance) + 1, interval_distance):
             # Filter the DataFrame to get the first occurrence of each distance
-            distance_data = df_filtered[df_filtered['s_reference'] == d]
+            distance_data = df_filtered[df_filtered['s_reference'] >= d].head(1)  # Get the first occurrence
             
             if not distance_data.empty:
-                # Get the first time and speed for this distance
-                times.append(distance_data['t'].iloc[0])
-                speeds.append(distance_data['v2'].iloc[0])  # Use v2 for speed
+                # Append results for the distance
+                results_list.append({
+                    'Distance (m)': d,
+                    'Time (s)': distance_data['t'].iloc[0],
+                    'Speed (m/s)': distance_data['v2'].iloc[0]  # Use v2 for speed
+                })
             else:
-                # If no data is found for this distance, append NaN
-                times.append(np.nan)
-                speeds.append(np.nan)
+                # If no data is found for this distance, append NaN values
+                results_list.append({
+                    'Distance (m)': d,
+                    'Time (s)': np.nan,
+                    'Speed (m/s)': np.nan
+                })
 
-        # Create a new DataFrame for the results
-        results_df = pd.DataFrame({
-            'Distance (m)': np.arange(0, max_distance + 1, interval_distance),
-            'Time (s)': times,
-            'Speed (m/s)': speeds
-        })
+        # Create a new DataFrame from the results
+        results_df = pd.DataFrame(results_list)
 
         # Display the new DataFrame in the Streamlit app
         st.write("Times and Speeds at Every 5 Meters:")
