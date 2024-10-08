@@ -107,8 +107,18 @@ if uploaded_file is not None:
 
         # New Plot for Calculated Distance (s2) with adjusted time
         fig_cleaned_distance = go.Figure()
-        fig_cleaned_distance.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
-        fig_cleaned_distance.update_layout(title="Calculated Distance (s2)", xaxis_title="Time (s)", yaxis_title="Distance (m)")
+        fig_cleaned_distance.add_trace(go.Scatter(
+            x=cleaned_df['t_adjusted'],
+            y=cleaned_df['s2'],
+            mode='lines',  # Continuous line
+            name='Calculated Distance (s2)',
+            line=dict(color='red', dash='dash')
+        ))
+        fig_cleaned_distance.update_layout(
+            title="Calculated Distance (s2)",
+            xaxis_title="Time (s)",
+            yaxis_title="Distance (m)"
+        )
         
         st.plotly_chart(fig_cleaned_distance, use_container_width=True)
 
@@ -136,25 +146,4 @@ if uploaded_file is not None:
                     'Speed (m/s)': speed_at_distance
                 })
 
-        # Ensure the 30 m entry is correctly reflected
-        if results_list and results_list[-1]['Distance (m)'] < max_distance:
-            time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
-            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
-            results_list.append({
-                'Distance (m)': max_distance,
-                'Time (s)': time_at_distance,
-                'Speed (m/s)': speed_at_distance
-            })
-
-        # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results_list)
-
-        # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
-
-        # Display the new DataFrame in the Streamlit app
-        st.write("Times and Speeds at Every 5 Meters:")
-        st.dataframe(results_df)
-
-    except Exception as e:
-        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+        # Ensure the 30 m
