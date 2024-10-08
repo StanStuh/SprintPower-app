@@ -166,12 +166,3 @@ if uploaded_file is not None:
             results_list.append({
                 'Distance (m)': max_distance,
                 'Time (s)': time_at_distance,
-                'Speed (m/s)': speed_at_distance
-            })
-
-        # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results_list)
-
-        # Display the results
-        st.write("Results DataFrame (Time and Speed at specified intervals):")
-       
