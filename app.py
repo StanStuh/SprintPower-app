@@ -49,35 +49,44 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
-        # Calculate raw v1 and v2 on the full dataset
-        df['vsur'] = df['s_sur'].diff() / df['t'].diff()
-        df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
-        df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
+        # Add a slider to select the range of data to cut off
+        time_range = st.slider("Select time range to cut off (in seconds)", 
+                                min_value=float(df['t'].min()), 
+                                max_value=float(df['t'].max()), 
+                                value=(float(df['t'].min()), float(df['t'].max())))
+
+        # Filter the DataFrame to exclude the selected time range
+        df_filtered = df[(df['t'] < time_range[0]) | (df['t'] > time_range[1])]
+
+        # Calculate raw v1 and v2 on the filtered dataset
+        df_filtered['vsur'] = df_filtered['s_sur'].diff() / df_filtered['t'].diff()
+        df_filtered['v1'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=9, B=9)
+        df_filtered['v2'] = moving_average_smoothing(df_filtered['vsur'].fillna(0), A=3, B=3)
         
         # Calculate distance s2 from smoothed speed v2
-        df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
+        df_filtered['s2'] = calculate_distance_from_speed(df_filtered['v2'], df_filtered['t'].diff().fillna(0))
 
         # Filter data for s_reference between 0 and the measured distance
-        df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
+        df_filtered = df_filtered[(df_filtered['s_reference'] >= 0) & (df_filtered['s_reference'] <= measured_distance)]
 
-        # Interactive Plot using Plotly for all data
+        # Interactive Plot using Plotly for all filtered data
         fig = go.Figure()
 
-        # Add raw speed plot for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['vsur'], mode='lines', name='Raw Speed (vsur)'))
+        # Add raw speed plot for filtered data
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['vsur'], mode='lines', name='Raw Speed (vsur)'))
         
-        # Add smoothed speed plots for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
-        fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
+        # Add smoothed speed plots for filtered data
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v1'], mode='lines', name='Smoothed Speed (v1)', line=dict(color='orange')))
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         
-        # Add plot for calculated distance for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
+        # Add plot for calculated distance for filtered data
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
         
-        # Add plot for s_reference for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
+        # Add plot for s_reference for filtered data
+        fig.add_trace(go.Scatter(x=df_filtered['t'], y=df_filtered['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
 
         fig.update_layout(
-            title="Speed and Distance (All Data)",
+            title="Speed and Distance (Filtered Data)",
             xaxis_title="Time (s)",
             yaxis_title="Speed/Distance (m/s or m)",
             hovermode="closest"
@@ -86,7 +95,7 @@ if uploaded_file is not None:
         # Plot the graph
         st.plotly_chart(fig)
 
-        # Display filtered DataFrame for the range s_reference=0 to measured distance
+        # Display filtered DataFrame for the range s_reference between 0 and measured distance
         st.write("Filtered Data (s_reference between 0 and measured distance):")
         st.dataframe(df_filtered)
 
@@ -96,7 +105,7 @@ if uploaded_file is not None:
         st.dataframe(cleaned_df)
 
         # Adjust time so it starts from 0 for cleaned data
-        cleaned_df['t_adjusted'] = cleaned_df['t'] - cleaned_df['t'].min()
+        cleaned_df['t_adjusted'] = cleaned_df['t'] - cleaned_df['t'].iloc[0]
 
         # Create new charts for v1 and v2 from the cleaned data
         st.subheader("Cleaned Data: Smoothed Speed (v1, v2) and Calculated Distance (s2)")
@@ -136,7 +145,7 @@ if uploaded_file is not None:
         # Iterate over the range from 0 to max_distance in steps of interval_distance
         for d in range(0, int(max_distance) + 1, interval_distance):
             # Filter the DataFrame to get the first occurrence of each distance
-            distance_data = df_filtered[df_filtered['s_reference'] >= d]
+            distance_data = cleaned_df[cleaned_df['s_reference'] >= d]
 
             if not distance_data.empty:
                 # Get the first occurrence of distance data
@@ -153,22 +162,4 @@ if uploaded_file is not None:
         # Ensure the 30 m entry is correctly reflected
         if results_list and results_list[-1]['Distance (m)'] < max_distance:
             time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
-            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
-            results_list.append({
-                'Distance (m)': max_distance,
-                'Time (s)': time_at_distance,
-                'Speed (m/s)': speed_at_distance
-            })
-
-        # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results_list)
-
-        # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
-
-        # Display the new DataFrame in the Streamlit app
-        st.write("Times and Speeds at Every 5 Meters:")
-        st.dataframe(results_df)
-
-    except Exception as e:
-        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for
