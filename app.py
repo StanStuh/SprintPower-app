@@ -67,7 +67,7 @@ if uploaded_file is not None:
         fig.add_trace(go.Scatter(x=df['t'], y=df['v2'], mode='lines', name='Smoothed Speed (v2)', line=dict(color='green')))
         
         # Add plot for calculated distance for all data
-        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
+        fig.add_trace(go.Scatter(x=df['t'], y=df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red')))
         
         # Add plot for s_reference for all data
         fig.add_trace(go.Scatter(x=df['t'], y=df['s_reference'], mode='lines', name='Reference Distance (s_reference)', line=dict(color='blue', dash='dot')))
@@ -112,7 +112,7 @@ if uploaded_file is not None:
             y=cleaned_df['s2'],
             mode='lines',  # Continuous line for s2
             name='Calculated Distance (s2)',
-            line=dict(color='red', dash='dash')  # Optional: Set line style to dashed
+            line=dict(color='red')  # Changed to straight line
         ))
         fig_cleaned_distance.update_layout(
             title="Calculated Distance (s2)",
