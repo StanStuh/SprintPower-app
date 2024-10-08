@@ -107,8 +107,18 @@ if uploaded_file is not None:
 
         # New Plot for Calculated Distance (s2) with adjusted time
         fig_cleaned_distance = go.Figure()
-        fig_cleaned_distance.add_trace(go.Scatter(x=cleaned_df['t_adjusted'], y=cleaned_df['s2'], mode='lines', name='Calculated Distance (s2)', line=dict(color='red', dash='dash')))
-        fig_cleaned_distance.update_layout(title="Calculated Distance (s2)", xaxis_title="Time (s)", yaxis_title="Distance (m)")
+        fig_cleaned_distance.add_trace(go.Scatter(
+            x=cleaned_df['t_adjusted'],
+            y=cleaned_df['s2'],
+            mode='lines',  # Continuous line for s2
+            name='Calculated Distance (s2)',
+            line=dict(color='red', dash='dash')  # Optional: Set line style to dashed
+        ))
+        fig_cleaned_distance.update_layout(
+            title="Calculated Distance (s2)",
+            xaxis_title="Time (s)",
+            yaxis_title="Distance (m)"
+        )
         
         st.plotly_chart(fig_cleaned_distance, use_container_width=True)
 
