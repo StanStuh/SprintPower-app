@@ -49,7 +49,7 @@ if uploaded_file is not None:
         # Button to cut off last 10 raw data points
         if st.button("Cut Off Last 10 Raw Data Points"):
             if st.session_state.df is not None and len(st.session_state.df) > 10:
-                st.session_state.df = st.session_state.df[:-10]
+                st.session_state.df = st.session_state.df[:-10]  # Remove last 10 rows
                 st.success("Last 10 raw data points removed.")
             else:
                 st.warning("Not enough data points to remove.")
@@ -176,10 +176,10 @@ if uploaded_file is not None:
             # Create a new DataFrame from the results
             results_df = pd.DataFrame(results_list)
 
-            # Remove duplicate rows based on distance, keeping the first occurrence
+                        # Remove duplicate rows based on distance, keeping the first occurrence
             results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
 
-            # Display the new DataFrame in the Streamlit app
+            # Display the results DataFrame
             st.write("Times and Speeds at Every 5 Meters:")
             st.dataframe(results_df)
 
