@@ -27,6 +27,9 @@ st.title("SprintPower Data Processing with Interactive Selection")
 # Input for calibration value
 calibration_value = st.number_input("Enter Calibration Value (in meters)", value=3.105, step=0.001)
 
+# Input for measured distance value
+measured_distance = st.number_input("Enter Measured Distance (in meters)", value=30.0, step=0.1)
+
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
