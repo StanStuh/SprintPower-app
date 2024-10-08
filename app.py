@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 from fpdf import FPDF
 
 # Function to calculate raw speed
@@ -23,6 +22,56 @@ def moving_average_smoothing(data, A, B):
 # Function to calculate distance from smoothed speed
 def calculate_distance_from_speed(v2, delta_t):
     return v2 * delta_t
+
+# Function to create a PDF with charts and table
+def create_pdf(cleaned_speed_fig, cleaned_distance_fig, results_df):
+    # Create a PDF document
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Title
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, 'Sprint Power Analysis', ln=True, align='C')
+
+    # Add cleaned speed figure
+    pdf.set_font("Arial", 'I', 12)
+    pdf.cell(0, 10, 'Smoothed Speed Analysis', ln=True)
+    
+    # Save cleaned speed figure to a file
+    cleaned_speed_fig.write_image("cleaned_speed.png")
+    pdf.image("cleaned_speed.png", x=10, y=30, w=190)
+
+    # Add cleaned distance figure
+    pdf.cell(0, 10, 'Calculated Distance Analysis', ln=True)
+
+    # Save cleaned distance figure to a file
+    cleaned_distance_fig.write_image("cleaned_distance.png")
+    pdf.image("cleaned_distance.png", x=10, y=150, w=190)
+
+    # Add results table
+    pdf.cell(0, 10, 'Results at Every 5 Meters:', ln=True)
+    pdf.set_font("Arial", '', 10)
+    
+    # Header
+    pdf.cell(60, 10, 'Distance (m)', 1)
+    pdf.cell(60, 10, 'Time (s)', 1)
+    pdf.cell(60, 10, 'Speed (m/s)', 1)
+    pdf.ln()
+
+    # Data rows
+    for index, row in results_df.iterrows():
+        pdf.cell(60, 10, str(row['Distance (m)']), 1)
+        pdf.cell(60, 10, str(row['Time (s)']), 1)
+        pdf.cell(60, 10, str(row['Speed (m/s)']), 1)
+        pdf.ln()
+
+    # Save the PDF
+    pdf_file_path = "Sprint_Power_Analysis.pdf"
+    pdf.output(pdf_file_path)
+    
+    # Provide a link to download the PDF
+    st.download_button(label="Download PDF", data=pdf_file_path, file_name=pdf_file_path)
 
 # Streamlit UI
 st.title("SprintPower Data Processing with Range Selection")
@@ -55,7 +104,7 @@ if uploaded_file is not None:
         # Calculate distance s2 from smoothed speed v2
         df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
 
-        # Filter data for s_reference between 0 and the measured distance (30 meters)
+        # Filter data for s_reference between 0 and the measured distance
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
 
         # Interactive Plot using Plotly for all data
@@ -84,8 +133,8 @@ if uploaded_file is not None:
         # Plot the graph
         st.plotly_chart(fig)
 
-        # Display filtered DataFrame for the range s_reference=0 to 30 meters
-        st.write("Filtered Data (s_reference between 0 and 30 meters):")
+        # Display filtered DataFrame for the range s_reference=0 to the measured distance
+        st.write("Filtered Data (s_reference between 0 and measured distance):")
         st.dataframe(df_filtered)
 
         # Clean the filtered data (e.g., drop NaNs)
@@ -136,49 +185,4 @@ if uploaded_file is not None:
             # Filter the DataFrame to get the first occurrence of each distance
             distance_data = df_filtered[df_filtered['s_reference'] >= d]
 
-            if not distance_data.empty:
-                # Get the first occurrence of distance data
-                time_at_distance = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
-                speed_at_distance = distance_data['v2'].iloc[0]  # Use v2 for speed
-
-                # Append results for the distance
-                results_list.append({
-                    'Distance (m)': d,
-                    'Time (s)': time_at_distance,
-                    'Speed (m/s)': speed_at_distance
-                })
-
-        # Ensure the 30 m entry is correctly reflected
-        if results_list and results_list[-1]['Distance (m)'] < max_distance:
-            time_at_distance = cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]  # Get last time for max distance
-            speed_at_distance = cleaned_df['v2'].iloc[-1]  # Use last speed for max distance
-            results_list.append({
-                'Distance (m)': max_distance,
-                'Time (s)': time_at_distance,
-                'Speed (m/s)': speed_at_distance
-            })
-
-        # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results_list)
-
-        # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
-
-        # Display the new DataFrame in the Streamlit app
-        st.write("Times and Speeds at Every 5 Meters:")
-        st.dataframe(results_df)
-
-        # Function to create a PDF with charts and table
-        def create_pdf(cleaned_speed_fig, cleaned_distance_fig, results_df):
-            # Create a PDF document
-            pdf = FPDF()
-            pdf.set_auto_page_break(auto=True, margin=15)
-            pdf.add_page()
-
-            # Title
-            pdf.set_font("Arial", 'B', 16)
-            pdf.cell(0, 10, 'Sprint Power Analysis', ln=True, align='C')
-
-            # Add cleaned speed figure
-            pdf.set_font("Arial", 'I', 12)
-            pdf.cell(0, 10,
+            if not distance_data.empty
