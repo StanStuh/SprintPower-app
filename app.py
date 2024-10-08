@@ -44,29 +44,6 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
-        # Initialize or update session state for DataFrame
-        if 'data' not in st.session_state:
-            st.session_state.data = df
-        else:
-            st.session_state.data = st.session_state.data
-
-        # Button to remove the last 0.5 seconds of data
-        if st.button("Remove Last 0.5 Seconds"):
-            if not st.session_state.data.empty:
-                # Calculate the cutoff time (max time - 0.5 seconds)
-                max_time = st.session_state.data['t'].max()
-                cutoff_time = max_time - 0.5
-                
-                # Remove entries greater than the cutoff time
-                st.session_state.data = st.session_state.data[st.session_state.data['t'] <= cutoff_time]
-                
-                st.success("Last 0.5 seconds of data removed.")
-            else:
-                st.warning("No data available to remove.")
-
-        # Update the DataFrame with the current state
-        df = st.session_state.data
-
         # Calculate raw v1 and v2 on the full dataset
         df['vsur'] = df['s_sur'].diff() / df['t'].diff()
         df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
@@ -75,7 +52,25 @@ if uploaded_file is not None:
         # Calculate distance s2 from smoothed speed v2
         df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
 
-        # Filter data for s_reference between 0 and the measured distance
+        # Display the DataFrame for the initial uploaded data
+        st.write("Initial Data:")
+        st.dataframe(df)
+
+        # Button to remove the last 0.5 seconds of data
+        if st.button("Remove Last 0.5 Seconds"):
+            if not df.empty:
+                # Calculate the cutoff time (max time - 0.5 seconds)
+                max_time = df['t'].max()
+                cutoff_time = max_time - 0.5
+                
+                # Remove entries greater than the cutoff time
+                df = df[df['t'] <= cutoff_time]
+                
+                st.success("Last 0.5 seconds of data removed.")
+            else:
+                st.warning("No data available to remove.")
+
+        # Filter data for s_reference between 0 and the measured distance (30 meters)
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
 
         # Interactive Plot using Plotly for all data
@@ -179,4 +174,7 @@ if uploaded_file is not None:
             })
 
         # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results
+        results_df = pd.DataFrame(results_list)
+
+        # Remove duplicate rows based on distance, keeping the first occurrence
+        results_df = results_df[~results_df.duplicated(subset=['Distance (m)
