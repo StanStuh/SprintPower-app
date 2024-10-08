@@ -182,4 +182,4 @@ if uploaded_file is not None:
                 st.warning("Not enough data points to remove.")
 
     except Exception as e:
-          st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
