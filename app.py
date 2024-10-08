@@ -178,4 +178,6 @@ if uploaded_file is not None:
                 'Speed (m/s)': speed_at_distance
             })
 
-        # Create a new DataFrame
+        # Create a new DataFrame from the results
+        results_df = pd.DataFrame(results_list)
+
