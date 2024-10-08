@@ -125,6 +125,9 @@ if uploaded_file is not None:
 
         # Iterate over the range from 0 to max_distance in steps of interval_distance
         for d in range(0, int(max_distance) + 1, interval_distance):
+            # Filter the DataFrame to get the first occurrence of each distance
+            distance_data = df_filtered[df_filtered['s_reference'] >= d]
+
             if d == 0:
                 # Append the first distance with time set to zero
                 results_list.append({
@@ -132,18 +135,10 @@ if uploaded_file is not None:
                     'Time (s)': last_known_time,
                     'Speed (m/s)': cleaned_df['v2'].iloc[0] if not cleaned_df.empty else np.nan
                 })
-            else:
-                # Filter the DataFrame to get the first occurrence of each distance
-                distance_data = df_filtered[df_filtered['s_reference'] >= d]
-                
-                if not distance_data.empty:
-                    # Update last known values
-                    last_known_time = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
-                    last_known_speed = distance_data['v2'].iloc[0]  # Use v2 for speed
-
-                # Ensure the last distance (30m) is captured
-                if d == max_distance and last_known_time == 0 and not distance_data.empty:
-                    last_known_time = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]
+            elif not distance_data.empty:
+                # Update last known values
+                last_known_time = distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0]  # Adjust time to start from zero
+                last_known_speed = distance_data['v2'].iloc[0]  # Use v2 for speed
 
                 # Append results for the distance
                 results_list.append({
@@ -154,6 +149,9 @@ if uploaded_file is not None:
 
         # Create a new DataFrame from the results
         results_df = pd.DataFrame(results_list)
+
+        # Remove duplicate rows based on distance, keeping the first occurrence
+        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
 
         # Display the new DataFrame in the Streamlit app
         st.write("Times and Speeds at Every 5 Meters:")
