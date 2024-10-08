@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from fpdf import FPDF
 
 # Function to calculate raw speed
 def calculate_raw_speed(df):
@@ -166,5 +168,17 @@ if uploaded_file is not None:
         st.write("Times and Speeds at Every 5 Meters:")
         st.dataframe(results_df)
 
-    except Exception as e:
-        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+        # Function to create a PDF with charts and table
+        def create_pdf(cleaned_speed_fig, cleaned_distance_fig, results_df):
+            # Create a PDF document
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+
+            # Title
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(0, 10, 'Sprint Power Analysis', ln=True, align='C')
+
+            # Add cleaned speed figure
+            pdf.set_font("Arial", 'I', 12)
+            pdf.cell(0, 10,
