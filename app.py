@@ -119,25 +119,36 @@ if uploaded_file is not None:
         # Create a new DataFrame for results
         results_list = []
 
+        # Initialize the first time to be zero
+        first_time = 0
+
         # Iterate over the range from 0 to max_distance in steps of interval_distance
         for d in range(0, int(max_distance) + 1, interval_distance):
-            # Filter the DataFrame to get the first occurrence of each distance
-            distance_data = df_filtered[df_filtered['s_reference'] >= d].head(1)  # Get the first occurrence
-            
-            if not distance_data.empty:
-                # Append results for the distance
+            if d == 0:
+                # Append the first distance with time set to zero
                 results_list.append({
                     'Distance (m)': d,
-                    'Time (s)': distance_data['t'].iloc[0],
-                    'Speed (m/s)': distance_data['v2'].iloc[0]  # Use v2 for speed
+                    'Time (s)': first_time,
+                    'Speed (m/s)': cleaned_df['v2'].iloc[0] if not cleaned_df.empty else np.nan
                 })
             else:
-                # If no data is found for this distance, append NaN values
-                results_list.append({
-                    'Distance (m)': d,
-                    'Time (s)': np.nan,
-                    'Speed (m/s)': np.nan
-                })
+                # Filter the DataFrame to get the first occurrence of each distance
+                distance_data = df_filtered[df_filtered['s_reference'] >= d].head(1)  # Get the first occurrence
+                
+                if not distance_data.empty:
+                    # Append results for the distance
+                    results_list.append({
+                        'Distance (m)': d,
+                        'Time (s)': distance_data['t'].iloc[0] - cleaned_df['t'].iloc[0],  # Adjust time to start from zero
+                        'Speed (m/s)': distance_data['v2'].iloc[0]  # Use v2 for speed
+                    })
+                else:
+                    # If no data is found for this distance, append NaN values
+                    results_list.append({
+                        'Distance (m)': d,
+                        'Time (s)': np.nan,
+                        'Speed (m/s)': np.nan
+                    })
 
         # Create a new DataFrame from the results
         results_df = pd.DataFrame(results_list)
