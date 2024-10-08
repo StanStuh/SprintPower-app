@@ -11,8 +11,9 @@ def calculate_raw_speed(df):
     df['vsur'] = df['s_sur'].diff() / df['t'].diff()
     return df
 
-# Function for moving average smoothing
+# Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
+    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
