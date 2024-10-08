@@ -147,6 +147,14 @@ if uploaded_file is not None:
                     'Speed (m/s)': last_known_speed
                 })
 
+        # Ensure 30 m is included, if it wasn't already in the results
+        if last_known_time < max_distance and not (results_list and results_list[-1]['Distance (m)'] == max_distance):
+            results_list.append({
+                'Distance (m)': max_distance,
+                'Time (s)': last_known_time + (cleaned_df['t'].iloc[-1] - cleaned_df['t'].iloc[0]),
+                'Speed (m/s)': last_known_speed
+            })
+
         # Create a new DataFrame from the results
         results_df = pd.DataFrame(results_list)
 
