@@ -173,3 +173,5 @@ if uploaded_file is not None:
         results_df = pd.DataFrame(results_list)
 
         # Display the results
+        st.write("Results DataFrame (Time and Speed at specified intervals):")
+       
