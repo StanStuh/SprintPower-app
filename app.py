@@ -13,7 +13,6 @@ def calculate_raw_speed(df):
 
 # Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
-    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
@@ -45,20 +44,28 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
+        # Initialize or update session state for DataFrame
+        if 'data' not in st.session_state:
+            st.session_state.data = df
+        else:
+            st.session_state.data = st.session_state.data
+
         # Button to remove the last 0.5 seconds of data
         if st.button("Remove Last 0.5 Seconds"):
-            # Check if DataFrame is available
-            if not df.empty:
+            if not st.session_state.data.empty:
                 # Calculate the cutoff time (max time - 0.5 seconds)
-                max_time = df['t'].max()
+                max_time = st.session_state.data['t'].max()
                 cutoff_time = max_time - 0.5
                 
                 # Remove entries greater than the cutoff time
-                df = df[df['t'] <= cutoff_time]
+                st.session_state.data = st.session_state.data[st.session_state.data['t'] <= cutoff_time]
                 
                 st.success("Last 0.5 seconds of data removed.")
             else:
                 st.warning("No data available to remove.")
+
+        # Update the DataFrame with the current state
+        df = st.session_state.data
 
         # Calculate raw v1 and v2 on the full dataset
         df['vsur'] = df['s_sur'].diff() / df['t'].diff()
@@ -171,15 +178,4 @@ if uploaded_file is not None:
                 'Speed (m/s)': speed_at_distance
             })
 
-        # Create a new DataFrame from the results
-        results_df = pd.DataFrame(results_list)
-
-        # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
-
-        # Display the new DataFrame in the Streamlit app
-        st.write("Times and Speeds at Every 5 Meters:")
-        st.dataframe(results_df)
-
-    except Exception as e:
-        st.error
+        # Create a new DataFrame
