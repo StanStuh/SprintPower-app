@@ -39,7 +39,7 @@ if uploaded_file is not None:
         # Read the CSV file with appropriate separator and decimal settings
         df = pd.read_csv(uploaded_file, sep=';', decimal=',', header=None, names=['t', 's_sur'])
         
-        # Remove the last second of data
+        # Remove the last second of data initially
         df = df[df['t'] < df['t'].max() - 1]
 
         # Ensure columns are numeric and clean data
@@ -48,7 +48,18 @@ if uploaded_file is not None:
         # Apply calibration value to calculate s_reference
         df['s_reference'] = df['s_sur'] - calibration_value
         
-        # Calculate raw v1 and v2 on the full dataset
+        # Store the original DataFrame in session state
+        if 'data' not in st.session_state:
+            st.session_state.data = df
+        
+        # Button to shorten data by 0.2 seconds
+        if st.button("Remove last 0.2 seconds of data"):
+            st.session_state.data = st.session_state.data[st.session_state.data['t'] < st.session_state.data['t'].max() - 0.2]
+        
+        # Get the current DataFrame from session state
+        df = st.session_state.data
+        
+        # Calculate raw v1 and v2 on the current dataset
         df['vsur'] = df['s_sur'].diff() / df['t'].diff()
         df['v1'] = moving_average_smoothing(df['vsur'].fillna(0), A=9, B=9)
         df['v2'] = moving_average_smoothing(df['vsur'].fillna(0), A=3, B=3)
@@ -163,11 +174,4 @@ if uploaded_file is not None:
         results_df = pd.DataFrame(results_list)
 
         # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
-
-        # Display the new DataFrame in the Streamlit app
-        st.write("Times and Speeds at Every 5 Meters:")
-        st.dataframe(results_df)
-
-    except Exception as e:
-        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+        results_df = results_df[~results_df.
