@@ -114,3 +114,36 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
+        # Create a new DataFrame for times and speeds at every 5 meters
+interval_distance = 5
+max_distance = df_filtered['s_reference'].max()
+
+# Create lists to store times and speeds
+times = []
+speeds = []
+
+# Iterate over the range from 0 to max_distance in steps of interval_distance
+for d in range(0, int(max_distance) + 1, interval_distance):
+    # Filter the DataFrame to get the first occurrence of each distance
+    distance_data = df_filtered[df_filtered['s_reference'] == d]
+    
+    if not distance_data.empty:
+        # Get the first time and speed for this distance
+        times.append(distance_data['t'].iloc[0])
+        speeds.append(distance_data['v2'].iloc[0])  # Use v2 for speed
+    else:
+        # If no data is found for this distance, append NaN
+        times.append(np.nan)
+        speeds.append(np.nan)
+
+# Create a new DataFrame for the results
+results_df = pd.DataFrame({
+    'Distance (m)': np.arange(0, max_distance + 1, interval_distance),
+    'Time (s)': times,
+    'Speed (m/s)': speeds
+})
+
+# Display the new DataFrame in the Streamlit app
+st.write("Times and Speeds at Every 5 Meters:")
+st.dataframe(results_df)
+
