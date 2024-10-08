@@ -13,6 +13,7 @@ def calculate_raw_speed(df):
 
 # Function for moving average smoothing with edge handling
 def moving_average_smoothing(data, A, B):
+    # Apply moving average smoothing
     for _ in range(A):
         data = np.convolve(data, np.ones((2 * B + 1,)) / (2 * B + 1), mode='same')
     return data
@@ -51,24 +52,6 @@ if uploaded_file is not None:
         
         # Calculate distance s2 from smoothed speed v2
         df['s2'] = calculate_distance_from_speed(df['v2'], df['t'].diff().fillna(0))
-
-        # Display the DataFrame for the initial uploaded data
-        st.write("Initial Data:")
-        st.dataframe(df)
-
-        # Button to remove the last 0.5 seconds of data
-        if st.button("Remove Last 0.5 Seconds"):
-            if not df.empty:
-                # Calculate the cutoff time (max time - 0.5 seconds)
-                max_time = df['t'].max()
-                cutoff_time = max_time - 0.5
-                
-                # Remove entries greater than the cutoff time
-                df = df[df['t'] <= cutoff_time]
-                
-                st.success("Last 0.5 seconds of data removed.")
-            else:
-                st.warning("No data available to remove.")
 
         # Filter data for s_reference between 0 and the measured distance (30 meters)
         df_filtered = df[(df['s_reference'] >= 0) & (df['s_reference'] <= measured_distance)]
@@ -177,4 +160,11 @@ if uploaded_file is not None:
         results_df = pd.DataFrame(results_list)
 
         # Remove duplicate rows based on distance, keeping the first occurrence
-        results_df = results_df[~results_df.duplicated(subset=['Distance (m)
+        results_df = results_df[~results_df.duplicated(subset=['Distance (m)'], keep='first')]
+
+        # Display the new DataFrame in the Streamlit app
+        st.write("Times and Speeds at Every 5 Meters:")
+        st.dataframe(results_df)
+
+    except Exception as e:
+        st.error(f"Pri obdelavi datoteke je prišlo do napake: {e}")
