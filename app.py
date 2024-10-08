@@ -34,6 +34,9 @@ measured_distance = st.number_input("Enter Measured Distance (in meters)", value
 # File upload
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
+# Initialize DataFrame
+df = None
+
 if uploaded_file is not None:
     try:
         # Read the CSV file with appropriate separator and decimal settings
@@ -41,7 +44,15 @@ if uploaded_file is not None:
         
         # Ensure columns are numeric and clean data
         df = calculate_raw_speed(df)
-        
+
+        # Button to remove last 10 data points
+        if st.button("Remove Last 10 Data Points"):
+            if len(df) >= 10:
+                df = df[:-10]  # Remove the last 10 rows
+                st.success("Removed the last 10 data points.")
+            else:
+                st.warning("Not enough data points to remove.")
+
         # Nariši graf surove poti - čas
         fig_raw_path = go.Figure()
         fig_raw_path.add_trace(go.Scatter(x=df['t'], y=df['s_sur'], mode='lines', name='Surova pot', line=dict(color='blue')))
