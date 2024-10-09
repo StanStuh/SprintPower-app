@@ -1,10 +1,9 @@
 import pandas as pd
 import streamlit as st
 
-# Function to load data without headers (since the input CSV doesn't have column names)
+# Function to load data with semicolon delimiter and comma as decimal separator
 def load_data(file):
-    # Load CSV with specific delimiters and decimal separators
-    return pd.read_csv(file, delimiter='\t', decimal=',', header=None, names=['Time', 'Distance'])
+    return pd.read_csv(file, delimiter=';', decimal=',', header=None, names=['Time', 'Distance'])
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type=['csv'])
