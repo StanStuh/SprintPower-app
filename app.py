@@ -12,9 +12,9 @@ if uploaded_file is not None:
     # Load the data
     data = load_data(uploaded_file)
     
-    # Display raw data without header
+    # Display raw data without header and remove the first row of data
     st.write("Raw Data:")
-    st.write(data.to_string(index=False, header=False))  # Display raw data without headers
+    st.write(data.iloc[1:].to_string(index=False, header=False))  # Remove first data row
 
     # Input for calibration and sprint length
     s_calibration = st.number_input("Enter calibration distance (m)", value=3.105)
@@ -35,8 +35,8 @@ if uploaded_file is not None:
         trimmed_data = data[(data[0] >= time_before_calibration) & (data[1] <= max_distance)]
 
         st.write("Trimmed Data:")
-        # Display trimmed data without header
-        st.write(trimmed_data.to_string(index=False, header=False))  # Display trimmed data without headers
+        # Display trimmed data without header and remove the first row of data
+        st.write(trimmed_data.iloc[1:].to_string(index=False, header=False))  # Remove first data row
 
         # Optional: Allow the user to download the trimmed data in the same format (semicolon and comma)
         csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',')
