@@ -19,19 +19,23 @@ def create_zip_file(files):
 # Initialize session state
 if 'trimmed_files' not in st.session_state:
     st.session_state.trimmed_files = []
+if 'uploaded_files' not in st.session_state:
+    st.session_state.uploaded_files = []
 
 # Clear all uploaded files button
 if st.button("Clear All Uploaded Files"):
     st.session_state.trimmed_files.clear()
+    st.session_state.uploaded_files.clear()  # Clear uploaded files
     st.success("All uploaded files have been cleared.")
 
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
-# Process uploaded files only if there are any
+# Check if there are any uploaded files
 if uploaded_files:
     # Clear previous trimmed files before processing new uploads
     st.session_state.trimmed_files.clear()  # Ensure any previous trimmed files are cleared
+    st.session_state.uploaded_files = uploaded_files  # Store uploaded files in session state
 
     for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
