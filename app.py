@@ -16,9 +16,19 @@ def create_zip_file(files):
     zip_buffer.seek(0)  # Reset the buffer position to the beginning
     return zip_buffer
 
-# Clear session state on new upload
+# Initialize session state
 if 'trimmed_files' not in st.session_state:
     st.session_state.trimmed_files = []
+
+# Function to clear all uploaded files
+def clear_uploaded_files():
+    st.session_state.trimmed_files.clear()
+    st.session_state.uploaded_files = []  # Also clear uploaded files if you want
+
+# Clear all uploaded files button
+if st.button("Clear All Uploaded Files"):
+    clear_uploaded_files()
+    st.success("All uploaded files have been cleared.")
 
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
@@ -26,7 +36,7 @@ uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_
 # If the user uploads new files, reset trimmed files
 if uploaded_files:
     # Clear previous trimmed files before processing new uploads
-    st.session_state.trimmed_files = []  # Reset the list of trimmed files
+    st.session_state.trimmed_files.clear()  # Reset the list of trimmed files
 
     for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
