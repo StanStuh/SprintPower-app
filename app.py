@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import zipfile
 import io
 
 # Function to load data with semicolon delimiter and comma as decimal separator
@@ -9,13 +10,11 @@ def load_data(file):
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
-# Placeholder for the download button
-download_button_placeholder = st.empty()
-
-# List to hold all trimmed data
-all_trimmed_data = []
-
 if uploaded_files:
+    # List to hold all trimmed data and their filenames for the zip
+    trimmed_data_files = []
+    filenames = []
+
     for uploaded_file in uploaded_files:
         # Load the data
         data = load_data(uploaded_file)
@@ -41,17 +40,24 @@ if uploaded_files:
 
             # Keep data between these time points
             trimmed_data = data[(data['Time'] >= time_before_calibration) & (data['Distance'] <= max_distance)]
-            all_trimmed_data.append(trimmed_data)
-
+            
             st.write(f"Trimmed Data from {uploaded_file.name}:")
             st.write(trimmed_data)
 
-    # Combine all trimmed data into a single DataFrame
-    if all_trimmed_data:
-        combined_trimmed_data = pd.concat(all_trimmed_data, ignore_index=True)
+            # Save the trimmed data to a CSV file in memory
+            csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',', header=False)
+            trimmed_data_files.append(csv_data.encode())  # Store bytes in list
+            filenames.append(f"trimmed_data_{uploaded_file.name}.csv")
 
-        # Allow the user to download the combined trimmed data
-        csv_data = combined_trimmed_data.to_csv(index=False, sep=';', decimal=',', header=False)
-        
-        # Show download button at the top
-        download_button_placeholder.download_button("Download All Trimmed Data", csv_data, "trimmed_data_combined.csv")
+    if trimmed_data_files:
+        # Create a ZIP file in memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+            for file_data, filename in zip(trimmed_data_files, filenames):
+                zip_file.writestr(filename, file_data)
+
+        # Move to the beginning of the BytesIO buffer
+        zip_buffer.seek(0)
+
+        # Provide a button to download the ZIP file
+        st.download_button("Download All Trimmed Data as ZIP", zip_buffer, "trimmed_data.zip", file_name="trimmed_data.zip")
