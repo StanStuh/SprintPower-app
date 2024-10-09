@@ -31,11 +31,16 @@ if st.button("Clear All Uploaded Files"):
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
-# Check if there are any uploaded files
+# If there are uploaded files, process them
 if uploaded_files:
     # Clear previous trimmed files before processing new uploads
     st.session_state.trimmed_files.clear()  # Ensure any previous trimmed files are cleared
-    st.session_state.uploaded_files = uploaded_files  # Store uploaded files in session state
+
+    # Store uploaded files in session state
+    st.session_state.uploaded_files = uploaded_files 
+
+    # Create a list to hold trimmed data for the download button
+    trimmed_files_to_download = []
 
     for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
@@ -72,7 +77,10 @@ if uploaded_files:
             csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',')
             st.session_state.trimmed_files.append((f"trimmed_{uploaded_file.name}", csv_data))  # Add to the list of files for the ZIP
 
-# If there are trimmed files, add a download button for the ZIP file at the top
-if st.session_state.trimmed_files:
-    zip_buffer = create_zip_file(st.session_state.trimmed_files)
-    st.download_button("Download All Trimmed Files", zip_buffer, "trimmed_files.zip", mime="application/zip")
+            # Add trimmed file for downloading
+            trimmed_files_to_download.append((f"trimmed_{uploaded_file.name}", csv_data))
+
+    # If there are trimmed files, add a download button for the ZIP file at the top
+    if trimmed_files_to_download:
+        zip_buffer = create_zip_file(trimmed_files_to_download)
+        st.download_button("Download All Trimmed Files", zip_buffer, "trimmed_files.zip", mime="application/zip")
