@@ -38,5 +38,5 @@ if uploaded_file is not None:
         st.write(trimmed_data)
 
         # Optional: Allow the user to download the trimmed data in the same format (semicolon and comma)
-        csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',')
+        csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',', header=False)
         st.download_button("Download Trimmed Data", csv_data, "trimmed_data.csv")
