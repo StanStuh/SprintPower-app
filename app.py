@@ -1,14 +1,27 @@
 import pandas as pd
 import streamlit as st
+import zipfile
+import io
 
 # Function to load data with semicolon delimiter and comma as decimal separator
 def load_data(file):
     return pd.read_csv(file, delimiter=';', decimal=',', header=None, names=['Time', 'Distance'])
 
+# Function to create a zip file containing multiple CSVs
+def create_zip_file(files):
+    zip_buffer = io.BytesIO()  # In-memory buffer
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for file_name, csv_data in files:
+            zf.writestr(file_name, csv_data)
+    zip_buffer.seek(0)  # Reset the buffer position to the beginning
+    return zip_buffer
+
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
 if uploaded_files:
+    trimmed_files = []
+    
     for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
         
@@ -40,6 +53,11 @@ if uploaded_files:
             st.write(f"Trimmed Data for {uploaded_file.name}:")
             st.write(trimmed_data)
 
-            # Optional: Allow the user to download the trimmed data in the same format (semicolon and comma)
+            # Prepare CSV data for download
             csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',')
-            st.download_button(f"Download Trimmed Data for {uploaded_file.name}", csv_data, f"trimmed_{uploaded_file.name}")
+            trimmed_files.append((f"trimmed_{uploaded_file.name}", csv_data))  # Add to the list of files for the ZIP
+
+    # If there are trimmed files, add a download button for the ZIP file
+    if trimmed_files:
+        zip_buffer = create_zip_file(trimmed_files)
+        st.download_button("Download All Trimmed Files", zip_buffer, "trimmed_files.zip", mime="application/zip")
