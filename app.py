@@ -20,22 +20,18 @@ def create_zip_file(files):
 if 'trimmed_files' not in st.session_state:
     st.session_state.trimmed_files = []
 
-# Function to clear all uploaded files
-def clear_uploaded_files():
-    st.session_state.trimmed_files.clear()
-
 # Clear all uploaded files button
 if st.button("Clear All Uploaded Files"):
-    clear_uploaded_files()
+    st.session_state.trimmed_files.clear()
     st.success("All uploaded files have been cleared.")
 
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
-# Check if there are any uploaded files
+# Process uploaded files only if there are any
 if uploaded_files:
     # Clear previous trimmed files before processing new uploads
-    clear_uploaded_files()  # Clear previous uploads
+    st.session_state.trimmed_files.clear()  # Ensure any previous trimmed files are cleared
 
     for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
