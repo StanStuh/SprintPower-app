@@ -19,9 +19,9 @@ def create_zip_file(files):
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
+trimmed_files = []  # To hold trimmed files for download
+
 if uploaded_files:
-    trimmed_files = []
-    
     for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
         
@@ -57,7 +57,8 @@ if uploaded_files:
             csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',')
             trimmed_files.append((f"trimmed_{uploaded_file.name}", csv_data))  # Add to the list of files for the ZIP
 
-    # If there are trimmed files, add a download button for the ZIP file
-    if trimmed_files:
-        zip_buffer = create_zip_file(trimmed_files)
-        st.download_button("Download All Trimmed Files", zip_buffer, "trimmed_files.zip", mime="application/zip")
+# If there are trimmed files, add a download button for the ZIP file at the top
+if trimmed_files:
+    zip_buffer = create_zip_file(trimmed_files)
+    st.download_button("Download All Trimmed Files", zip_buffer, "trimmed_files.zip", mime="application/zip")
+
