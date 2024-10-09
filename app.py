@@ -12,9 +12,9 @@ if uploaded_file is not None:
     # Load the data
     data = load_data(uploaded_file)
     
-    # Display raw data
+    # Display raw data without header
     st.write("Raw Data:")
-    st.write(data)
+    st.write(data.to_string(index=False, header=False))
 
     # Input for calibration and sprint length
     s_calibration = st.number_input("Enter calibration distance (m)", value=3.105)
