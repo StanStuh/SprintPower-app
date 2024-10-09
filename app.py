@@ -8,6 +8,9 @@ def load_data(file):
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file", type=['csv'])
 
+# Placeholder for the download button
+download_button_placeholder = st.empty()
+
 if uploaded_file is not None:
     # Load the data
     data = load_data(uploaded_file)
@@ -37,6 +40,8 @@ if uploaded_file is not None:
         st.write("Trimmed Data:")
         st.write(trimmed_data)
 
-        # Optional: Allow the user to download the trimmed data in the same format (semicolon and comma)
+        # Allow the user to download the trimmed data in the same format (semicolon and comma)
         csv_data = trimmed_data.to_csv(index=False, sep=';', decimal=',', header=False)
-        st.download_button("Download Trimmed Data", csv_data, "trimmed_data.csv")
+        
+        # Show download button at the top
+        download_button_placeholder.download_button("Download Trimmed Data", csv_data, "trimmed_data.csv")
