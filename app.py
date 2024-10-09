@@ -9,7 +9,7 @@ def load_data(file):
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
 
 if uploaded_files:
-    for uploaded_file in uploaded_files:
+    for idx, uploaded_file in enumerate(uploaded_files):
         st.write(f"Processing file: {uploaded_file.name}")
         
         # Load the data
@@ -19,9 +19,9 @@ if uploaded_files:
         st.write("Raw Data:")
         st.write(data)
 
-        # Input for calibration and sprint length
-        s_calibration = st.number_input("Enter calibration distance (m)", value=3.105)
-        d_sprint = st.number_input("Enter sprint length (m)", value=30.0)
+        # Input for calibration and sprint length, with unique keys for each file
+        s_calibration = st.number_input(f"Enter calibration distance (m) for {uploaded_file.name}", value=3.105, key=f"calibration_{idx}")
+        d_sprint = st.number_input(f"Enter sprint length (m) for {uploaded_file.name}", value=30.0, key=f"sprint_{idx}")
 
         # Find the time point that is 1 second before the calibration distance
         try:
