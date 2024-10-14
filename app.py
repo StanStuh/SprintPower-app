@@ -8,27 +8,59 @@ import numpy as np
 def load_data(file):
     return pd.read_csv(file, delimiter=';', decimal=',', header=None, names=['Time', 'Distance'])
 
-# Function to calculate raw speed
+# Function to calculate raw speed (v_sur)
 def calculate_raw_speed(data):
-    data['v_sur'] = data['Distance'].diff() / data['Time'].diff()
-    return data
+    delta_distance = data['Distance'].diff()
+    delta_time = data['Time'].diff()
+    v_sur = delta_distance / delta_time
+    return v_sur
 
-# Function to smooth speed with moving average filter
-def moving_average_smoothing(data, A, B):
+# Function to apply moving average filter (two-step smoothing)
+def moving_average_filter(v_sur, A=5, B=8):
+    v_avg = v_sur.copy()  # Make sure we don't modify v_sur
     for _ in range(A):
-        data['v_sur'] = data['v_sur'].rolling(window=2*B+1, min_periods=1, center=True).mean()
-    return data
+        v_avg = v_avg.rolling(window=2 * B + 1, min_periods=1, center=True).mean()
+    return v_avg
+
+# Function to apply a new moving average filter for a given column
+def filter_column(data, A, B):
+    v_filtered = data.copy()
+    for _ in range(A):
+        v_filtered = v_filtered.rolling(window=2 * B + 1, min_periods=1, center=True).mean()
+    return v_filtered
 
 # Function to replace out-of-tolerance values
 def replace_out_of_tolerance(data, tolerance):
-    v_sur_plus = data['v_sur'].mean() + tolerance
-    v_sur_minus = data['v_sur'].mean() - tolerance
-    
-    for i in range(1, len(data)):
-        if data.loc[i, 'v_sur'] > v_sur_plus or data.loc[i, 'v_sur'] < v_sur_minus:
-            data.loc[i, 'v_sur'] = data.loc[i-1, 'v_sur']  # Replace with the previous in-tolerance value
-    
+    data['v_sur_nad'] = data['v_avg58'] + tolerance
+    data['v_sur_pod'] = data['v_avg58'] - tolerance
+
+    # Create a new column for v_znotraj_tol in the 7th column
+    data['v_znotraj_tol'] = data['v_sur']  # This will be moved to the 7th column later
+
+    # Replace out-of-tolerance values with the nearest previous value
+    for index in range(1, len(data)):
+        if data['v_sur'].iloc[index] > data['v_sur_nad'].iloc[index]:
+            data['v_znotraj_tol'].iloc[index] = data['v_znotraj_tol'].iloc[index - 1]
+        elif data['v_sur'].iloc[index] < data['v_sur_pod'].iloc[index]:
+            data['v_znotraj_tol'].iloc[index] = data['v_znotraj_tol'].iloc[index - 1]
+
     return data
+
+# Function to calculate distance from speed
+def calculate_distance_from_speed(data):
+    # Calculate the time differences
+    delta_time = data['Time'].diff()
+    # Calculate the distance based on the speed in the 9th column (v_znotraj_tol_filtered_3_3)
+    distance_covered = data['v_znotraj_tol_filtered_3_3'] * delta_time
+    return distance_covered.cumsum()  # Cumulative sum to get the total distance covered
+
+# Function to calculate acceleration from speed
+def calculate_acceleration(data, speed_column):
+    # Calculate the time differences
+    delta_time = data['Time'].diff()
+    # Calculate the acceleration (change in speed over change in time)
+    acceleration = data[speed_column].diff() / delta_time
+    return acceleration
 
 # Upload multiple CSV files
 uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
@@ -45,12 +77,11 @@ if uploaded_files:
     # Create a temporary directory to store the trimmed files
     os.makedirs("trimmed_data", exist_ok=True)
 
-    processed_files = []
-    
+    # Process each uploaded file
     for uploaded_file in uploaded_files:
         # Load the data
         data = load_data(uploaded_file)
-        
+
         # Display raw data
         st.write(f"Raw Data from {uploaded_file.name}:")
         st.write(data)
@@ -68,14 +99,57 @@ if uploaded_files:
         # Keep data between these time points
         trimmed_data = data[(data['Time'] >= time_before_calibration) & (data['Distance'] <= max_distance)]
 
-        st.write(f"Trimmed Data from {uploaded_file.name}:")
-        st.write(trimmed_data)
+        # Calculate raw speed (v_sur)
+        trimmed_data['v_sur'] = calculate_raw_speed(trimmed_data)
 
-        # Save the trimmed data to a CSV file
+        # Apply the moving average filter to v_sur and store in the fourth column (v_avg58)
+        trimmed_data['v_avg58'] = moving_average_filter(trimmed_data['v_sur'])
+
+        # Copy the first value of v_sur from the second value
+        if not trimmed_data['v_sur'].isnull().all():  # Ensure there are no NaN values in v_sur
+            trimmed_data['v_sur'].iloc[0] = trimmed_data['v_sur'].iloc[1]  # Copy the second value to the first
+
+        # Initialize the 7th column (v_znotraj_tol) with the original v_sur values
+        tolerance = st.number_input(f"Enter tolerance value for {uploaded_file.name}", value=2, min_value=0, key=f"tolerance_{uploaded_file.name}")
+        trimmed_data = replace_out_of_tolerance(trimmed_data, tolerance)
+
+        # Shift the v_znotraj_tol column to the 7th position
+        columns_order = ['Time', 'Distance', 'v_sur', 'v_avg58', 'v_sur_nad', 'v_sur_pod', 'v_znotraj_tol']
+        trimmed_data = trimmed_data[columns_order]
+
+        # Apply the moving average filter (A=9, B=9) to the 7th column and store in the 8th column
+        trimmed_data['v_znotraj_tol_filtered_9_9'] = filter_column(trimmed_data['v_znotraj_tol'], A=9, B=9)
+
+        # Apply the moving average filter (A=3, B=3) to the 7th column and store in the 9th column
+        trimmed_data['v_znotraj_tol_filtered_3_3'] = filter_column(trimmed_data['v_znotraj_tol'], A=3, B=3)
+
+        # Calculate the distance covered based on the speed in the 9th column and store in the 10th column
+        trimmed_data['Distance_Covered'] = calculate_distance_from_speed(trimmed_data)
+
+        # Calculate acceleration from the speed in the 8th column (v_znotraj_tol_filtered_9_9) and store in the 11th column
+        trimmed_data['Acceleration_8'] = calculate_acceleration(trimmed_data, 'v_znotraj_tol_filtered_9_9')
+
+        # Calculate acceleration from the speed in the 9th column (v_znotraj_tol_filtered_3_3) and store in the 12th column
+        trimmed_data['Acceleration_9'] = calculate_acceleration(trimmed_data, 'v_znotraj_tol_filtered_3_3')
+
+        # Reorder columns to include the new 11th and 12th columns
+        columns_order_with_filtered = ['Time', 'Distance', 'v_sur', 'v_avg58', 'v_sur_nad', 'v_sur_pod', 'v_znotraj_tol', 'v_znotraj_tol_filtered_9_9', 'v_znotraj_tol_filtered_3_3', 'Distance_Covered', 'Acceleration_8', 'Acceleration_9']
+        trimmed_data = trimmed_data[columns_order_with_filtered]
+
+        # Create a list of column numbers
+        column_numbers = list(range(1, len(trimmed_data.columns) + 1))
+
+        # Insert column numbers as the first row
+        trimmed_data_with_numbers = pd.DataFrame(columns=trimmed_data.columns)
+        trimmed_data_with_numbers.loc[0] = column_numbers
+        trimmed_data_with_numbers = pd.concat([trimmed_data_with_numbers, trimmed_data], ignore_index=True)
+
+        st.write(f"Trimmed Data with Raw Speed, Smoothed Speed, Tolerance Replacement, Distance Covered, and Acceleration from {uploaded_file.name}:")
+        st.write(trimmed_data_with_numbers)
+
+        # Save the trimmed data with column numbers to a CSV file
         trimmed_file_path = f"trimmed_data/trimmed_data_{uploaded_file.name}"
-        trimmed_data.to_csv(trimmed_file_path, index=False, sep=';', decimal=',', header=False)
-        
-        processed_files.append(trimmed_data)
+        trimmed_data_with_numbers.to_csv(trimmed_file_path, index=False, sep=';', decimal=',', header=False)
 
     # Create a ZIP file containing all the trimmed data
     zip_filename = "trimmed_data.zip"
@@ -86,25 +160,4 @@ if uploaded_files:
 
     # Provide a download button for the ZIP file
     with open(zip_filename, "rb") as f:
-        download_button_placeholder.download_button("Download All Trimmed Data as ZIP", f, zip_filename)
-
-    # Optionally, you can clean up the temporary directory after download
-    import shutil
-    shutil.rmtree("trimmed_data")
-
-    # Button to calculate raw speed after trimming
-    if st.button("izračunaj surovo hitrost za vse odprte"):
-        for i, data in enumerate(processed_files):
-            processed_files[i] = calculate_raw_speed(data)
-            # Smoothing
-            processed_files[i] = moving_average_smoothing(processed_files[i], A=5, B=8)
-            st.write(f"Processed Data with Raw Speed from file {uploaded_files[i].name}:")
-            st.write(processed_files[i])
-        
-    # Tolerance input and button to replace out-of-tolerance values after trimming
-    tolerance = st.number_input("Vnesite toleranco", value=2)
-    if st.button("nadomesti vse izven tolerance"):
-        for i, data in enumerate(processed_files):
-            processed_files[i] = replace_out_of_tolerance(processed_files[i], tolerance)
-            st.write(f"Data with Tolerance Applied from file {uploaded_files[i].name}:")
-            st.write(processed_files[i])
+        download_button_placeholder.download_button("Download All Trimmed Data as ZIP", f, file_name=zip_filename, mime="application/zip")
