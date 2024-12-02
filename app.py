@@ -1,163 +1,74 @@
-import pandas as pd
 import streamlit as st
-import zipfile
-import os
-import numpy as np
+from PyPDF2 import PdfReader
+import pandas as pd
+from datetime import datetime
+import io
 
-# Function to load data with semicolon delimiter and comma as decimal separator
-def load_data(file):
-    return pd.read_csv(file, delimiter=';', decimal=',', header=None, names=['Time', 'Distance'])
+# Streamlit UI
+st.title("PDF Data Extraction to Excel")
+st.write("Upload a PDF file to extract specific data and save it in an Excel format.")
 
-# Function to calculate raw speed (v_sur)
-def calculate_raw_speed(data):
-    delta_distance = data['Distance'].diff()
-    delta_time = data['Time'].diff()
-    v_sur = delta_distance / delta_time
-    return v_sur
+# File uploader
+uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
 
-# Function to apply moving average filter (two-step smoothing)
-def moving_average_filter(v_sur, A=5, B=8):
-    v_avg = v_sur.copy()  # Make sure we don't modify v_sur
-    for _ in range(A):
-        v_avg = v_avg.rolling(window=2 * B + 1, min_periods=1, center=True).mean()
-    return v_avg
-
-# Function to apply a new moving average filter for a given column
-def filter_column(data, A, B):
-    v_filtered = data.copy()
-    for _ in range(A):
-        v_filtered = v_filtered.rolling(window=2 * B + 1, min_periods=1, center=True).mean()
-    return v_filtered
-
-# Function to replace out-of-tolerance values
-def replace_out_of_tolerance(data, tolerance):
-    data['v_sur_nad'] = data['v_avg58'] + tolerance
-    data['v_sur_pod'] = data['v_avg58'] - tolerance
-
-    # Create a new column for v_znotraj_tol in the 7th column
-    data['v_znotraj_tol'] = data['v_sur']  # This will be moved to the 7th column later
-
-    # Replace out-of-tolerance values with the nearest previous value
-    for index in range(1, len(data)):
-        if data['v_sur'].iloc[index] > data['v_sur_nad'].iloc[index]:
-            data['v_znotraj_tol'].iloc[index] = data['v_znotraj_tol'].iloc[index - 1]
-        elif data['v_sur'].iloc[index] < data['v_sur_pod'].iloc[index]:
-            data['v_znotraj_tol'].iloc[index] = data['v_znotraj_tol'].iloc[index - 1]
-
-    return data
-
-# Function to calculate distance from speed
-def calculate_distance_from_speed(data):
-    # Calculate the time differences
-    delta_time = data['Time'].diff()
-    # Calculate the distance based on the speed in the 9th column (v_znotraj_tol_filtered_3_3)
-    distance_covered = data['v_znotraj_tol_filtered_3_3'] * delta_time
-    return distance_covered.cumsum()  # Cumulative sum to get the total distance covered
-
-# Function to calculate acceleration from speed
-def calculate_acceleration(data, speed_column):
-    # Calculate the time differences
-    delta_time = data['Time'].diff()
-    # Calculate the acceleration (change in speed over change in time)
-    acceleration = data[speed_column].diff() / delta_time
-    return acceleration
-
-# Upload multiple CSV files
-uploaded_files = st.file_uploader("Upload your CSV files", type=['csv'], accept_multiple_files=True)
-
-# Placeholder for the download button
-download_button_placeholder = st.empty()
-
-# Check if any files are uploaded
-if uploaded_files:
-    # Input for calibration and sprint length
-    s_calibration = st.number_input("Enter calibration distance (m)", value=3.105)
-    d_sprint = st.number_input("Enter sprint length (m)", value=30.0)
-
-    # Create a temporary directory to store the trimmed files
-    os.makedirs("trimmed_data", exist_ok=True)
-
-    # Process each uploaded file
-    for uploaded_file in uploaded_files:
-        # Load the data
-        data = load_data(uploaded_file)
-
-        # Display raw data
-        st.write(f"Raw Data from {uploaded_file.name}:")
-        st.write(data)
-
-        # Find the time point that is 1 second before the calibration distance
-        try:
-            time_before_calibration = data[data['Distance'] >= s_calibration]['Time'].iloc[0] - 1.0
-        except IndexError:
-            st.error(f"Error in {uploaded_file.name}: Could not find a point in the data where the distance is greater than or equal to the calibration distance.")
-            continue
-
-        # 32 meters of the sprint (s_calibration + d_sprint + 2)
-        max_distance = s_calibration + d_sprint + 2
-
-        # Keep data between these time points
-        trimmed_data = data[(data['Time'] >= time_before_calibration) & (data['Distance'] <= max_distance)]
-
-        # Calculate raw speed (v_sur)
-        trimmed_data['v_sur'] = calculate_raw_speed(trimmed_data)
-
-        # Apply the moving average filter to v_sur and store in the fourth column (v_avg58)
-        trimmed_data['v_avg58'] = moving_average_filter(trimmed_data['v_sur'])
-
-        # Copy the first value of v_sur from the second value
-        if not trimmed_data['v_sur'].isnull().all():  # Ensure there are no NaN values in v_sur
-            trimmed_data['v_sur'].iloc[0] = trimmed_data['v_sur'].iloc[1]  # Copy the second value to the first
-
-        # Initialize the 7th column (v_znotraj_tol) with the original v_sur values
-        tolerance = st.number_input(f"Enter tolerance value for {uploaded_file.name}", value=2, min_value=0, key=f"tolerance_{uploaded_file.name}")
-        trimmed_data = replace_out_of_tolerance(trimmed_data, tolerance)
-
-        # Shift the v_znotraj_tol column to the 7th position
-        columns_order = ['Time', 'Distance', 'v_sur', 'v_avg58', 'v_sur_nad', 'v_sur_pod', 'v_znotraj_tol']
-        trimmed_data = trimmed_data[columns_order]
-
-        # Apply the moving average filter (A=9, B=9) to the 7th column and store in the 8th column
-        trimmed_data['v_znotraj_tol_filtered_9_9'] = filter_column(trimmed_data['v_znotraj_tol'], A=9, B=9)
-
-        # Apply the moving average filter (A=3, B=3) to the 7th column and store in the 9th column
-        trimmed_data['v_znotraj_tol_filtered_3_3'] = filter_column(trimmed_data['v_znotraj_tol'], A=3, B=3)
-
-        # Calculate the distance covered based on the speed in the 9th column and store in the 10th column
-        trimmed_data['Distance_Covered'] = calculate_distance_from_speed(trimmed_data)
-
-        # Calculate acceleration from the speed in the 8th column (v_znotraj_tol_filtered_9_9) and store in the 11th column
-        trimmed_data['Acceleration_8'] = calculate_acceleration(trimmed_data, 'v_znotraj_tol_filtered_9_9')
-
-        # Calculate acceleration from the speed in the 9th column (v_znotraj_tol_filtered_3_3) and store in the 12th column
-        trimmed_data['Acceleration_9'] = calculate_acceleration(trimmed_data, 'v_znotraj_tol_filtered_3_3')
-
-        # Reorder columns to include the new 11th and 12th columns
-        columns_order_with_filtered = ['Time', 'Distance', 'v_sur', 'v_avg58', 'v_sur_nad', 'v_sur_pod', 'v_znotraj_tol', 'v_znotraj_tol_filtered_9_9', 'v_znotraj_tol_filtered_3_3', 'Distance_Covered', 'Acceleration_8', 'Acceleration_9']
-        trimmed_data = trimmed_data[columns_order_with_filtered]
-
-        # Create a list of column numbers
-        column_numbers = list(range(1, len(trimmed_data.columns) + 1))
-
-        # Insert column numbers as the first row
-        trimmed_data_with_numbers = pd.DataFrame(columns=trimmed_data.columns)
-        trimmed_data_with_numbers.loc[0] = column_numbers
-        trimmed_data_with_numbers = pd.concat([trimmed_data_with_numbers, trimmed_data], ignore_index=True)
-
-        st.write(f"Trimmed Data with Raw Speed, Smoothed Speed, Tolerance Replacement, Distance Covered, and Acceleration from {uploaded_file.name}:")
-        st.write(trimmed_data_with_numbers)
-
-        # Save the trimmed data with column numbers to a CSV file
-        trimmed_file_path = f"trimmed_data/trimmed_data_{uploaded_file.name}"
-        trimmed_data_with_numbers.to_csv(trimmed_file_path, index=False, sep=';', decimal=',', header=False)
-
-    # Create a ZIP file containing all the trimmed data
-    zip_filename = "trimmed_data.zip"
-    with zipfile.ZipFile(zip_filename, 'w') as zipf:
-        for uploaded_file in uploaded_files:
-            trimmed_file_path = f"trimmed_data/trimmed_data_{uploaded_file.name}"
-            zipf.write(trimmed_file_path, os.path.basename(trimmed_file_path))
-
-    # Provide a download button for the ZIP file
-    with open(zip_filename, "rb") as f:
-        download_button_placeholder.download_button("Download All Trimmed Data as ZIP", f, file_name=zip_filename, mime="application/zip")
+if uploaded_file:
+    # Read the uploaded PDF
+    reader = PdfReader(uploaded_file)
+    
+    # Prepare the extracted data
+    data = {"ID naročila": [], "Ime panoge": [], "Začetek meritve": [], "Cena vseh meritev skupaj": []}
+    
+    # Define keywords for extraction
+    keywords = {
+        "ID naročila:": "ID naročila",
+        "Ime panoge:": "Ime panoge",
+        "Začetek meritve:": "Začetek meritve",
+        "Cena vseh meritev skupaj:": "Cena vseh meritev skupaj"
+    }
+    
+    # Extract data from each page
+    for page in reader.pages:
+        text = page.extract_text()
+        page_data = {key: None for key in keywords.values()}  # Initialize with None
+        
+        for key, column in keywords.items():
+            if key in text:
+                start_idx = text.find(key) + len(key)
+                extracted = text[start_idx:].split("\n")[0].strip()
+                page_data[column] = extracted
+        
+        for column, value in page_data.items():
+            data[column].append(value)
+    
+    # Convert to DataFrame
+    df_sheet1 = pd.DataFrame(data)
+    
+    # Process "Cena vseh meritev skupaj" for numerical calculations
+    df_sheet1["Cena vseh meritev skupaj"] = (
+        df_sheet1["Cena vseh meritev skupaj"]
+        .str.replace("€", "")
+        .str.replace(",", "")
+        .astype(float, errors='ignore')
+    )
+    
+    # Summary for Sheet 2
+    df_sheet2 = df_sheet1.groupby("Ime panoge", as_index=False)["Cena vseh meritev skupaj"].sum()
+    
+    # File name with timestamp
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
+    excel_file_name = f"{timestamp}_Extracted_Data.xlsx"
+    
+    # Save to Excel in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_sheet1.to_excel(writer, index=False, sheet_name="Sheet1")
+        df_sheet2.to_excel(writer, index=False, sheet_name="Sheet2")
+    output.seek(0)
+    
+    # Provide download link
+    st.download_button(
+        label="Download Excel file",
+        data=output,
+        file_name=excel_file_name,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
