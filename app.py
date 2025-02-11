@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 # Function to load data with semicolon delimiter and comma as decimal separator
 def load_data(file):
+    print("Loading data")
     return pd.read_csv(file, delimiter=';', decimal=',', header=None, names=['Time', 'Distance'])
 
 # Function to calculate raw speed (v_sur)
